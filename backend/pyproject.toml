@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "achave-backend"
+version = "0.1.0"
+description = "Backend de AChave." 
+requires-python = ">=3.10"
+authors = [{ name = "AChave" }]
+
+dependencies = [
+    "fastapi",
+    "pydantic[email]",
+    "pydantic-settings",
+    "uvicorn",
+    "python-dotenv",
+    "sqlalchemy",
+    "alembic",
+    "psycopg2-binary",
+    "pyjwt",
+    "bcrypt",
+    "fastapi-mail",
+]
+
+[project.scripts]
+achave-backend = "main:read_root"
+
+[tool.setuptools]
+packages = ["schemas", "models", "crud", "routers", "utils"]
+py-modules = ["main", "config", "database"]
