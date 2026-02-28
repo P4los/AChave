@@ -1,23 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, Save, Shuffle, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Save, Shuffle, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { usePasswordGenerator } from "@/hooks/usePasswordGenerator";
 
 export default function NuevaClavePage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState("");
 
-  const generatePassword = () => {
-    // Generador de prueba simple
-    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
-    let generated = "";
-    for (let i = 0; i < 16; i++) {
-      generated += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setPassword(generated);
+  const { generatePassword } = usePasswordGenerator();
+
+  const handleGeneratePassword = () => {
+    const pwd = generatePassword({
+      length: 16,
+      uppercase: true,
+      lowercase: true,
+      numbers: true,
+      symbols: true
+    });
+    setPassword(pwd);
   };
 
   return (
@@ -64,10 +68,15 @@ export default function NuevaClavePage() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-[14px] font-bold text-slate-900">Contraseña secreta</label>
+            <div className="flex justify-between items-end">
+              <label className="text-[14px] font-bold text-slate-900">Contraseña secreta</label>
+              <button type="button" onClick={handleGeneratePassword} className="text-[12px] font-bold flex items-center gap-1 text-green-600 hover:text-green-700 transition-colors bg-green-50 px-2 py-1 rounded-md">
+                <Shuffle className="w-3 h-3" /> Generar
+              </button>
+            </div>
             
-            <div className="flex flex-col md:flex-row gap-3">
-              <div className="relative w-full flex-1">
+            <div className="flex flex-col gap-1">
+              <div className="relative w-full">
                 <input 
                   type={showPassword ? "text" : "password"}
                   value={password}
@@ -83,6 +92,7 @@ export default function NuevaClavePage() {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+              <p className="text-[11px] text-green-600 font-bold flex items-center gap-1 mt-1"><ShieldCheck className="w-3 h-3"/> Se encriptará localmente usando la llave maestra.</p>
             </div>
           </div>
 
@@ -108,7 +118,7 @@ export default function NuevaClavePage() {
             className="bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 px-8 rounded-[14px] transition-colors flex items-center justify-center gap-2"
           >
             Guardar Clave
-            <Save className="w-4 h-4 ml-1" />
+            <Save className="hidden md:block w-4 h-4 ml-1" />
           </button>
         </div>
 

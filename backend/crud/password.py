@@ -6,7 +6,7 @@ from models.password import Password
 from schemas.password import PasswordCreate, PasswordUpdate
 
 def get_vault_passwords(db: Session, vault_id: UUID) -> list[Password]:
-    """Obtiene las contraseñas de una bóveda específica."""
+    """Obtiene las contraseñas de un cofre específico."""
     stmt = select(Password).where(Password.vault_id == vault_id)
     return list(db.execute(stmt).scalars().all())
 

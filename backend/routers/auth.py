@@ -54,7 +54,7 @@ async def register_user(
 def verify_email(token: str, db: Session = Depends(get_db)):
     """
     Fase 2: El usuario hace clic en el enlace.
-    Marca is_verified=True y crea la bóveda por defecto.
+    Marca is_verified=True y crea el cofre por defecto.
     """
     user_id = decode_verification_token(token)
     
