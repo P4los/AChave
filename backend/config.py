@@ -20,7 +20,15 @@ class Config(BaseSettings):
     )
 
     logLevel: str = Field("INFO", validation_alias="LOG_LEVEL")
-
+    
+    # La URL de conexión a la base de datos
+    databaseUrl: str = Field(..., validation_alias="DATABASE_URL")
+    
+    # Las credenciales de Google OAuth
+    googleClientId: str = Field(..., validation_alias="GOOGLE_CLIENT_ID")
+    
+    # El secreto para firmar tus JWT
+    secretKey: str = Field(..., validation_alias="SECRET_KEY")
 
 
 config = Config()
