@@ -34,11 +34,11 @@ def update_password(db: Session, password_id: UUID, password_in: PasswordUpdate)
     db_pwd = get_password(db, password_id)
     if not db_pwd:
         return None
-        
+
     update_data = password_in.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_pwd, key, value)
-        
+
     db.commit()
     db.refresh(db_pwd)
     return db_pwd
@@ -48,7 +48,7 @@ def delete_password(db: Session, password_id: UUID) -> bool:
     db_pwd = get_password(db, password_id)
     if not db_pwd:
         return False
-        
+
     db.delete(db_pwd)
     db.commit()
     return True

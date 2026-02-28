@@ -11,11 +11,11 @@ class Password(Base):
 
     web: Mapped[str] = mapped_column(String(255), nullable=False)
     user_email: Mapped[str] = mapped_column(String(255), nullable=False)
-    
+
     password: Mapped[str] = mapped_column(String, nullable=False)
-    
+
     compromised: Mapped[bool] = mapped_column(Boolean, default=False)
-    
+
     vault_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("vaults.vault_id", ondelete="CASCADE"), nullable=False)
 
     vault: Mapped["Vault"] = relationship(back_populates="passwords")

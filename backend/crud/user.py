@@ -35,12 +35,12 @@ def verify_user(db: Session, user_id: UUID) -> User | None:
     db_user = get_user_by_id(db, user_id)
     if not db_user:
         return None
-    
+
     if db_user.is_verified:
         return db_user
-    
+
     db_user.is_verified = True
-    
+
     default_vault = Vault(
         name="Cofre Principal",
         description="Cofre por defecto. No se puede eliminar.",
@@ -60,15 +60,15 @@ def setup_crypto(db: Session, user_id: UUID, crypto_in: CryptoSetup) -> User | N
     db_user = get_user_by_id(db, user_id)
     if not db_user:
         return None
-    
+
     # Hashear la Master Password con bcrypt para autenticación futura
     db_user.hashed_password = get_password_hash(crypto_in.password)
-    
+
     # Guardar paquete criptográfico (el backend NUNCA descifra esto)
     db_user.validador_cifrado = crypto_in.validador_cifrado
     db_user.llave_publica = crypto_in.llave_publica
     db_user.llave_privada_cifrada = crypto_in.llave_privada_cifrada
-    
+
     db.commit()
     db.refresh(db_user)
     return db_user

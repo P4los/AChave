@@ -3,6 +3,7 @@ from typing import Optional
 from datetime import datetime
 from uuid import UUID
 
+
 # Esquema base
 class VaultBase(BaseModel):
     name: str
@@ -10,16 +11,19 @@ class VaultBase(BaseModel):
     icon: Optional[str] = None
     color: Optional[str] = None
 
+
 # Esquema para crear un cofre
 class VaultCreate(VaultBase):
     pass
 
+
 # Esquema para actualizar
-class VaultUpdate(BaseModel):
-    name: Optional[str] = None
+class VaultUpdate(VaultBase):
+    name: str
     description: Optional[str] = None
     icon: Optional[str] = None
     color: Optional[str] = None
+
 
 # Esquema de respuesta
 class VaultResponse(VaultBase):

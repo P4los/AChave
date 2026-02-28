@@ -40,12 +40,12 @@ async def register_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Este email ya está registrado en AChave."
         )
-    
+
     new_user = create_user(db=db, user_in=user_in)
-    
+
     verification_token = create_verification_token(new_user.user_id)
     background_tasks.add_task(send_verification_email, new_user.email, verification_token)
-    
+
     return new_user
 
 # ─── FASE 2: Verificación email ───
@@ -57,14 +57,14 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     Marca is_verified=True y crea el cofre por defecto.
     """
     user_id = decode_verification_token(token)
-    
+
     db_user = verify_user(db, user_id)
     if not db_user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
-    
+
     # Generar un JWT temporal para que pueda llamar a /setup-crypto
     token = create_access_token(user_id=db_user.user_id)
-    
+
     return {
         "message": "Email verificado. Ahora configura tu Master Password.",
         "is_verified": True,
@@ -87,14 +87,14 @@ def setup_user_crypto(
     Requiere el JWT que se entregó en la verificación.
     """
     db_user = get_user_by_id(db, user_id)
-    
+
     if not db_user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
     if not db_user.is_verified:
         raise HTTPException(status_code=403, detail="Debes verificar tu email primero.")
     if db_user.hashed_password is not None:
         raise HTTPException(status_code=400, detail="La Master Password ya fue configurada.")
-    
+
     updated_user = setup_crypto(db=db, user_id=user_id, crypto_in=crypto_in)
     return updated_user
 
@@ -107,29 +107,29 @@ def login_user(user_credentials: UserLogin, db: Session = Depends(get_db)):
     Devuelve JWT + paquete criptográfico para validación local.
     """
     db_user = get_user_by_email(db, email=user_credentials.email)
-    
+
     if not db_user or not db_user.hashed_password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenciales incorrectas.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     if not verify_password(user_credentials.password, db_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenciales incorrectas.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     if not db_user.is_verified:
         raise HTTPException(status_code=403, detail="Debes verificar tu email primero.")
-    
+
     token = create_access_token(user_id=db_user.user_id)
     db_user.access_token = token
     db_user.token_type = "Bearer"
     db.commit()
-    
+
     return db_user
 
 # ─── PERFIL ───
