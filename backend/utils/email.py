@@ -60,4 +60,14 @@ async def send_verification_email(to_email: str, token: str):
         subtype=MessageType.html,
     )
     
-    await fastmail.send_message(message)
+    try:
+        await fastmail.send_message(message)
+        print(f"********✅ Email de verificación enviado a {to_email}")
+    except Exception as e:
+        print("\n" + "🔥" * 25)
+        print(f"⚠️ ERROR DE SMTP: No se pudo enviar el email a {to_email}")
+        print(f"Detalle del error: {e}")
+        print("\n¡NO TE PREOCUPES! PARA CONTINUAR EL HACKATHON:")
+        print("Copia y pega este enlace de verificación en tu navegador:")
+        print(f"\n👉  {verification_url}  👈\n")
+        print("🔥" * 25 + "\n")

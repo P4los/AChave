@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: achave-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: achave_db
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - achave_pg_data:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  achave_pg_data:

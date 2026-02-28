@@ -1,4 +1,19 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+
 export default function AjustesPage() {
+  const router = useRouter();
+
+  const handleLogout = () => {
+    // Borrar la cookie del token JWT
+    document.cookie = "ACHAVE_ACCESS_TOKEN=; path=/; max-age=0; SameSite=Strict;";
+    // Borrar también el paquete criptográfico local
+    localStorage.removeItem("achave_crypto_package");
+    // Redirigir a login
+    router.push("/login");
+  };
+
   return (
     <div className="flex flex-col h-full gap-5 md:gap-8 max-w-[800px] mx-auto w-full">
       <div className="flex flex-col gap-6 w-full">
@@ -52,7 +67,10 @@ export default function AjustesPage() {
               <span className="text-[15px] font-semibold text-slate-900">Cerrar sesión</span>
               <span className="text-[12px] text-slate-500">Cerrará la sesión en este dispositivo</span>
             </div>
-            <button className="bg-red-50 text-red-600 border border-red-200 px-6 py-2.5 rounded-xl text-[14px] font-bold hover:bg-red-100 transition-colors w-full md:w-auto">
+            <button 
+              onClick={handleLogout}
+              className="bg-red-50 text-red-600 border border-red-200 px-6 py-2.5 rounded-xl text-[14px] font-bold hover:bg-red-100 transition-colors w-full md:w-auto"
+            >
               Cerrar Sesión
             </button>
           </div>

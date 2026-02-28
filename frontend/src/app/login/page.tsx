@@ -9,10 +9,56 @@ export default function LoginPage() {
   const [masterKey, setMasterKey] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log(isLogin ? "Iniciando sesión con:" : "Registrando:", { email, masterKey });
-    // Aquí irían las llamadas a la API o autenticación
+    setLoading(true);
+    setError("");
+    setSuccessMsg("");
+
+    try {
+      const endpoint = isLogin ? "http://127.0.0.1:8000/auth/login" : "http://127.0.0.1:8000/auth/register";
+      
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email,
+          password: masterKey // Utilizado para la autenticación en servidor (Fase 1)
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || (isLogin ? "Error al iniciar sesión" : "Error al crear la cuenta"));
+      }
+
+      if (isLogin) {
+        // Guardar el JWT como Cooke para que el Middleware se entere
+        document.cookie = `ACHAVE_ACCESS_TOKEN=${data.access_token}; path=/; max-age=86400; SameSite=Strict;`;
+        
+        // TODO: En el futuro guardar también el paquete criptográfico de la respuesta localmente
+        console.log("Login exitoso. JWT guardado en cookie:", data.access_token);
+        
+        setSuccessMsg("¡Sesión iniciada correctamente! Cargando tu cofre...");
+        setTimeout(() => window.location.href = "/claves", 1500);
+      } else {
+        console.log("Registro exitoso:", data);
+        setSuccessMsg("¡Cuenta creada! Revisa tu bandeja de entrada para verificar tu email.");
+        setEmail("");
+        setMasterKey("");
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -97,38 +143,52 @@ export default function LoginPage() {
               />
             </div>
 
-            <div className="flex flex-col gap-2">
-              <label className="text-[14px] font-bold text-slate-900">Master Password</label>
-              <div className="relative w-full">
-                <input 
-                  type={showPassword ? "text" : "password"}
-                  required
-                  value={masterKey}
-                  onChange={(e) => setMasterKey(e.target.value)}
-                  placeholder="Tu contraseña secreta"
-                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-[15px] rounded-[14px] pl-4 pr-12 py-3.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all placeholder:text-slate-400 font-medium"
-                />
-                <button 
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
+            {isLogin && (
+              <div className="flex flex-col gap-2">
+                <label className="text-[14px] font-bold text-slate-900">Master Password</label>
+                <div className="relative w-full">
+                  <input 
+                    type={showPassword ? "text" : "password"}
+                    required={isLogin}
+                    value={masterKey}
+                    onChange={(e) => setMasterKey(e.target.value)}
+                    placeholder="Tu contraseña secreta"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-[15px] rounded-[14px] pl-4 pr-12 py-3.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all placeholder:text-slate-400 font-medium"
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
-              {!isLogin && (
-                <p className="text-xs font-semibold text-slate-500 mt-1">
-                  Asegúrate de no olvidarla. Nosotros <span className="text-red-500 font-bold">no podemos recuperarla</span> por ti.
-                </p>
-              )}
-            </div>
+            )}
 
             <button 
               type="submit"
-              className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-[14px] transition-colors shadow-sm shadow-green-600/20"
+              disabled={loading}
+              className={`mt-4 w-full text-white font-bold py-4 px-6 rounded-[14px] transition-all shadow-sm ${
+                loading ? "bg-green-600/50 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 shadow-green-600/20"
+              }`}
             >
-              {isLogin ? "Iniciar sesión con mi cofre" : "Crear mi cofre seguro"}
+              {loading ? "Cargando..." : (isLogin ? "Iniciar sesión con mi cofre" : "Crear mi cofre seguro")}
             </button>
+            
+            {error && (
+              <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm font-semibold border border-red-100 flex items-start gap-2">
+                <TriangleAlert className="w-5 h-5 shrink-0" />
+                <p>{error}</p>
+              </div>
+            )}
+            
+            {successMsg && (
+              <div className="p-4 bg-green-50 text-green-700 rounded-xl text-sm font-semibold border border-green-100 flex items-start gap-2">
+                <ShieldCheck className="w-5 h-5 shrink-0" />
+                <p>{successMsg}</p>
+              </div>
+            )}
           </form>
 
           <div className="pt-6 border-t border-slate-100 flex justify-center text-[15px]">
@@ -136,8 +196,13 @@ export default function LoginPage() {
               {isLogin ? "¿No tienes cuenta todavía?" : "¿Ya tienes un cofre?"}
             </span>
             <button 
-              onClick={() => setIsLogin(!isLogin)}
-              className="font-bold text-green-600 hover:text-green-700 transition-colors"
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setError("");
+                setSuccessMsg("");
+              }}
+              disabled={loading}
+              className="font-bold text-green-600 hover:text-green-700 transition-colors disabled:opacity-50"
             >
               {isLogin ? "Regístrate aquí" : "Inicia sesión"}
             </button>

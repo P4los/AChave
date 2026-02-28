@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: achave-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: achave_db
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - achave_pg_data:/var/lib/postgresql/data
+    restart: always
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: achave-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app    # Mapea tu código local al docker para que los cambios se reflejen al momento (hot-reload)
+    env_file:
+      - ./backend/.env
+    environment:
+      # Sobreescribe la URL para usar el nombre del contenedor "db" en lugar de "localhost"
+      - DATABASE_URL=postgresql://postgres@db:5432/achave_db
+    depends_on:
+      - db
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: achave-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app   # Mapea tu código local al docker para hot-reload
+      - /app/node_modules # Evita que tu carpeta local sobreescriba los modulos de node de linux
+      - /app/.next        # Protege el build de next cache
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  achave_pg_data:
