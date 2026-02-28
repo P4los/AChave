@@ -1,6 +1,5 @@
 import os
 
-
 def hash_check(hash_value: str) -> str | None:
     if not hash_value:
         return None

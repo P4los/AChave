@@ -16,7 +16,7 @@ class VaultCreate(VaultBase):
 
 # Esquema para actualizar
 class VaultUpdate(VaultBase):
-    name: Optional[str] = None
+    name: str
     description: Optional[str] = None
     icon: Optional[str] = None
     color: Optional[str] = None

@@ -18,7 +18,7 @@ password = APIRouter(
 
 @password.get("/vault/{vault_id}", response_model=List[PasswordResponse])
 def get_vault_passwords(
-    vault_id: UUID, 
+    vault_id: UUID,
     db: Session = Depends(get_db),
     user_id: UUID = Depends(get_current_user_id)
 ):
@@ -29,12 +29,12 @@ def get_vault_passwords(
     db_vault = crud_vault.get_user_vaults(db, user_id=user_id)
     if not any(v.vault_id == vault_id for v in db_vault):
         raise HTTPException(status_code=403, detail="No tienes acceso a esta bóveda.")
-        
+
     return crud_pwd.get_vault_passwords(db=db, vault_id=vault_id)
 
 @password.get("/{password_id}", response_model=PasswordResponse)
 def get_single_password(
-    password_id: UUID, 
+    password_id: UUID,
     db: Session = Depends(get_db),
     user_id: UUID = Depends(get_current_user_id)
 ):
@@ -46,13 +46,13 @@ def get_single_password(
 
 @password.post("/", response_model=PasswordResponse, status_code=status.HTTP_201_CREATED)
 def create_password(
-    password_in: PasswordCreate, 
+    password_in: PasswordCreate,
     db: Session = Depends(get_db),
     user_id: UUID = Depends(get_current_user_id)
 ):
     """Guarda un nuevo ciphertext en una bóveda de PostgreSQL."""
     db_vaults = crud_vault.get_user_vaults(db, user_id=user_id)
-    
+
     # 1. Si no enviaron bóveda, buscar en su lista la que es por defecto
     if password_in.vault_id is None:
         default_vault = next((v for v in db_vaults if v.is_default), None)
@@ -63,13 +63,13 @@ def create_password(
         # 2. Si enviaron bóveda, verificar que sea suya
         if not any(v.vault_id == password_in.vault_id for v in db_vaults):
             raise HTTPException(status_code=403, detail="Bóveda no autorizada o no existe.")
-        
+
     return crud_pwd.create_password(db=db, password_in=password_in)
 
 @password.put("/{password_id}", response_model=PasswordResponse)
 def update_password(
-    password_id: UUID, 
-    password_in: PasswordUpdate, 
+    password_id: UUID,
+    password_in: PasswordUpdate,
     db: Session = Depends(get_db),
     user_id: UUID = Depends(get_current_user_id)
 ):
@@ -81,7 +81,7 @@ def update_password(
 
 @password.delete("/{password_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_password(
-    password_id: UUID, 
+    password_id: UUID,
     db: Session = Depends(get_db),
     user_id: UUID = Depends(get_current_user_id)
 ):

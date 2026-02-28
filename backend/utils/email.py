@@ -23,7 +23,7 @@ async def send_verification_email(to_email: str, token: str):
     un enlace con el token usado para verificar su cuenta.
     """
     verification_url = f"{config.frontend_url}/verify?token={token}"
-    
+
     html_body = f"""
     <html>
     <body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #0d1117; color: #c9d1d9; padding: 40px;">
@@ -34,9 +34,9 @@ async def send_verification_email(to_email: str, token: str):
             <p style="font-size: 16px;">¡Bienvenido!</p>
             <p>Haz clic en el botón para verificar tu correo electrónico y activar tu cuenta:</p>
             <div style="text-align: center; margin: 32px 0;">
-                <a href="{verification_url}" 
-                   style="background: linear-gradient(135deg, #58a6ff, #1f6feb); color: white; 
-                          padding: 14px 32px; border-radius: 8px; text-decoration: none; 
+                <a href="{verification_url}"
+                   style="background: linear-gradient(135deg, #58a6ff, #1f6feb); color: white;
+                          padding: 14px 32px; border-radius: 8px; text-decoration: none;
                           font-weight: bold; font-size: 16px;">
                     Verificar mi correo
                 </a>
@@ -52,14 +52,14 @@ async def send_verification_email(to_email: str, token: str):
     </body>
     </html>
     """
-    
+
     message = MessageSchema(
         subject="AChave — Verifica tu correo electrónico",
         recipients=[to_email],
         body=html_body,
         subtype=MessageType.html,
     )
-    
+
     try:
         await fastmail.send_message(message)
         print(f"********✅ Email de verificación enviado a {to_email}")

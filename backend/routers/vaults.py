@@ -15,7 +15,7 @@ vaults = APIRouter(
 
 @vaults.get("/", response_model=List[VaultResponse])
 def read_user_vaults(
-    db: Session = Depends(get_db), 
+    db: Session = Depends(get_db),
     user_id: UUID = Depends(get_current_user_id)
 ):
     """Obtiene la lista de todas las bóvedas del usuario actual."""
@@ -23,8 +23,8 @@ def read_user_vaults(
 
 @vaults.post("/", response_model=VaultResponse, status_code=status.HTTP_201_CREATED)
 def create_vault(
-    vault_in: VaultCreate, 
-    db: Session = Depends(get_db), 
+    vault_in: VaultCreate,
+    db: Session = Depends(get_db),
     user_id: UUID = Depends(get_current_user_id)
 ):
     """Crea una nueva bóveda para el usuario logueado."""
@@ -32,9 +32,9 @@ def create_vault(
 
 @vaults.put("/{vault_id}", response_model=VaultResponse)
 def update_vault(
-    vault_id: UUID, 
-    vault_in: VaultUpdate, 
-    db: Session = Depends(get_db), 
+    vault_id: UUID,
+    vault_in: VaultUpdate,
+    db: Session = Depends(get_db),
     user_id: UUID = Depends(get_current_user_id)
 ):
     """Actualiza el nombre, descripción, color o ícono de la bóveda."""
@@ -45,8 +45,8 @@ def update_vault(
 
 @vaults.delete("/{vault_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_vault(
-    vault_id: UUID, 
-    db: Session = Depends(get_db), 
+    vault_id: UUID,
+    db: Session = Depends(get_db),
     user_id: UUID = Depends(get_current_user_id)
 ):
     """Elimina una bóveda (y todas sus claves en cascada)."""

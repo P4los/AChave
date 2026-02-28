@@ -4,7 +4,7 @@ from config import config
 
 engine = create_engine(
     config.database_url,
-    pool_pre_ping=True  
+    pool_pre_ping=True
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

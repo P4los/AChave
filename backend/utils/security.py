@@ -10,15 +10,11 @@ from config import config
 # Esquema HTTP Bearer para Swagger UI (botón "Authorize")
 security_scheme = HTTPBearer()
 
-# ─────────────────────────────────────────────
-# HASHING DE CONTRASEÑAS (Bcrypt)
-# ─────────────────────────────────────────────
-
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Compara contraseña plana contra el hash bcrypt almacenado en PostgreSQL."""
     try:
         return bcrypt.checkpw(
-            plain_password.encode('utf-8')[:72], 
+            plain_password.encode('utf-8')[:72],
             hashed_password.encode('utf-8')
         )
     except Exception:
@@ -29,10 +25,6 @@ def get_password_hash(password: str) -> str:
     pwd_bytes = password.encode('utf-8')[:72]
     hashed_bytes = bcrypt.hashpw(pwd_bytes, bcrypt.gensalt(rounds=12))
     return hashed_bytes.decode('utf-8')
-
-# ─────────────────────────────────────────────
-# JSON WEB TOKENS (JWT) - Sesión de usuario
-# ─────────────────────────────────────────────
 
 def create_access_token(user_id: UUID) -> str:
     """Genera un JWT de sesión firmado con HS256 que contiene el UUID del usuario."""
@@ -75,10 +67,10 @@ def decode_verification_token(token: str) -> UUID:
     """Decodifica el token de verificación y devuelve el user_id."""
     try:
         payload = jwt.decode(token, config.jwt_secret_key, algorithms=[config.jwt_algorithm])
-        
+
         if payload.get("type") != "email_verification":
             raise HTTPException(status_code=400, detail="Este token no es de verificación.")
-        
+
         user_id_str = payload.get("sub")
         if user_id_str is None:
             raise HTTPException(status_code=400, detail="Token de verificación inválido.")
