@@ -6,12 +6,12 @@ from models.vault import Vault
 from schemas.vault import VaultCreate, VaultUpdate
 
 def get_user_vaults(db: Session, user_id: UUID) -> list[Vault]:
-    """Obtiene todas las bóvedas de un usuario específico."""
+    """Obtiene todos los cofres de un usuario específico."""
     stmt = select(Vault).where(Vault.user_id == user_id)
     return list(db.execute(stmt).scalars().all())
 
 def create_vault(db: Session, vault_in: VaultCreate, user_id: UUID) -> Vault:
-    """Crea una nueva bóveda asignada a un usuario."""
+    """Crea un nuevo cofre asignado a un usuario."""
     db_vault = Vault(
         name=vault_in.name,
         description=vault_in.description,
@@ -25,7 +25,7 @@ def create_vault(db: Session, vault_in: VaultCreate, user_id: UUID) -> Vault:
     return db_vault
 
 def update_vault(db: Session, vault_id: UUID, user_id: UUID, vault_in: VaultUpdate) -> Vault | None:
-    """Actualiza una bóveda. Verifica que pertenezca al usuario primero (Seguridad IDOR)."""
+    """Actualiza un cofre. Verifica que pertenezca al usuario primero (Seguridad IDOR)."""
     stmt = select(Vault).where(Vault.vault_id == vault_id, Vault.user_id == user_id)
     db_vault = db.execute(stmt).scalars().first()
     

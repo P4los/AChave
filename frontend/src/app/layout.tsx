@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { CryptoProvider } from "@/context/CryptoContext";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -21,7 +22,9 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={`${inter.variable} font-sans antialiased text-slate-900 bg-slate-100 min-h-screen`}>
-        {children}
+        <CryptoProvider>
+          {children}
+        </CryptoProvider>
       </body>
     </html>
   );

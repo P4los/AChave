@@ -1,6 +1,11 @@
-import { ShieldCheck, Plus, KeyRound, TriangleAlert, Shuffle, Settings } from 'lucide-react';
+import { useState } from 'react';
+import { ShieldCheck, Plus, KeyRound, TriangleAlert, Shuffle, Settings, ChevronDown, Check } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useCrypto, Vault } from '@/context/CryptoContext';
+import { VAULT_ICONS } from '../modals/CreateVaultModal';
+import { DeleteVaultModal } from '../modals/DeleteVaultModal';
+import { Trash2 } from 'lucide-react';
 
 const sidebarLinks = [
   { href: '/claves', icon: KeyRound, label: 'Mis Claves' },
@@ -9,8 +14,20 @@ const sidebarLinks = [
   { href: '/ajustes', icon: Settings, label: 'Ajustes' },
 ];
 
+// Helper to find the actual icon component
+const getIconComponent = (iconName: string | null) => {
+  if (!iconName) return ShieldCheck;
+  const found = VAULT_ICONS.find(v => v.name === iconName);
+  return found ? found.icon : ShieldCheck;
+};
+
 export function Sidebar({ onOpenVaultModal }: { onOpenVaultModal: () => void }) {
   const pathname = usePathname();
+  const { vaults, selectedVault, setSelectedVault } = useCrypto();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [vaultToDelete, setVaultToDelete] = useState<Vault | null>(null);
+
+  const CurrentVaultIcon = getIconComponent(selectedVault?.icon || "shield");
 
   return (
     <div className="hidden md:flex w-[300px] flex-col justify-between h-screen bg-white border-r border-slate-200 px-7 py-10 fixed left-0 top-0">
@@ -22,7 +39,7 @@ export function Sidebar({ onOpenVaultModal }: { onOpenVaultModal: () => void }) 
           <span className="text-[28px] font-extrabold text-slate-900">AChave</span>
         </div>
 
-        <div className="mb-8">
+        <div className="mb-8 relative">
           <div className="text-sm font-bold text-slate-500 mb-3 px-1 flex items-center justify-between">
             Tus Cofres
             <button 
@@ -32,15 +49,77 @@ export function Sidebar({ onOpenVaultModal }: { onOpenVaultModal: () => void }) 
               Nuevo Cofre
             </button>
           </div>
-          <div className="flex items-center gap-3 p-3 bg-slate-100 rounded-[14px]">
-            <div className="w-10 h-10 rounded-xl bg-green-600 flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5 text-white" />
+          
+          {/* Selected Vault Button */}
+          <button 
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-[14px] transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div 
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm"
+                style={{ backgroundColor: selectedVault?.color || '#16A34A' }}
+              >
+                <CurrentVaultIcon className="w-5 h-5" />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="text-sm font-bold text-slate-900 truncate max-w-[120px]">
+                  {selectedVault ? selectedVault.name : "Cargando..."}
+                </span>
+                <span className="text-[12px] font-semibold text-slate-500">Cofre Activo</span>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="text-base font-bold text-slate-900">Cofre de mg</span>
-              <span className="text-[13px] text-slate-500">10 elementos</span>
+            <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Vault selector dropdown */}
+          {isDropdownOpen && vaults.length > 0 && (
+            <div className="absolute top-full left-0 w-full mt-2 bg-white border border-slate-200 rounded-[14px] shadow-xl overflow-hidden z-20">
+              <div className="max-h-[250px] overflow-y-auto">
+                {vaults.map((vault) => {
+                  const VaultIcon = getIconComponent(vault.icon);
+                  const isSelected = selectedVault?.vault_id === vault.vault_id;
+
+                  return (
+                    <div key={vault.vault_id} className="w-full flex items-center justify-between hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0 group">
+                      <button
+                        onClick={() => {
+                          setSelectedVault(vault);
+                          setIsDropdownOpen(false);
+                        }}
+                        className="flex-1 flex items-center justify-between p-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div 
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-white"
+                            style={{ backgroundColor: vault.color || '#16A34A' }}
+                          >
+                            <VaultIcon className="w-4 h-4" />
+                          </div>
+                          <span className={`text-sm font-bold ${isSelected ? 'text-slate-900' : 'text-slate-600'}`}>
+                            {vault.name}
+                          </span>
+                        </div>
+                        {isSelected && <Check className="w-4 h-4 text-green-600" />}
+                      </button>
+
+                      {!vault.is_default && (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setVaultToDelete(vault);
+                          }}
+                          className="p-3 text-slate-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <Link 
@@ -86,6 +165,22 @@ export function Sidebar({ onOpenVaultModal }: { onOpenVaultModal: () => void }) 
           <span className="text-sm font-bold text-slate-900">Miguel G.</span>
         </div>
       </div>
+      
+      {/* Overlay to close dropdown if touching outside */}
+      {isDropdownOpen && (
+        <div 
+          className="fixed inset-0 z-10" 
+          onClick={() => setIsDropdownOpen(false)} 
+          aria-hidden="true"
+        />
+      )}
+
+      {vaultToDelete && (
+        <DeleteVaultModal 
+          vault={vaultToDelete} 
+          onClose={() => setVaultToDelete(null)} 
+        />
+      )}
     </div>
   );
 }

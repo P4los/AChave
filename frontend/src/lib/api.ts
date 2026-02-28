@@ -124,7 +124,7 @@ export function logout() {
 }
 
 // ─────────────────────────────────────────────
-// Funciones de bóvedas
+// Funciones de cofres
 // ─────────────────────────────────────────────
 
 export interface Vault {

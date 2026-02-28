@@ -21,12 +21,12 @@ def get_vault_passwords(
     user_id: UUID = Depends(get_current_user_id)
 ):
     """
-    Obtiene TODAS las contraseñas de una bóveda.
-    Por seguridad, primero verificamos que la bóveda le pertenezca al usuario.
+    Obtiene TODAS las contraseñas de un cofre.
+    Por seguridad, primero verificamos que el cofre le pertenezca al usuario.
     """
     db_vault = crud_vault.get_user_vaults(db, user_id=user_id)
     if not any(v.vault_id == vault_id for v in db_vault):
-        raise HTTPException(status_code=403, detail="No tienes acceso a esta bóveda.")
+        raise HTTPException(status_code=403, detail="No tienes acceso a este cofre.")
         
     return crud_pwd.get_vault_passwords(db=db, vault_id=vault_id)
 
@@ -48,19 +48,19 @@ def create_password(
     db: Session = Depends(get_db),
     user_id: UUID = Depends(get_current_user_id)
 ):
-    """Guarda un nuevo ciphertext en una bóveda de PostgreSQL."""
+    """Guarda un nuevo ciphertext en un cofre de PostgreSQL."""
     db_vaults = crud_vault.get_user_vaults(db, user_id=user_id)
     
-    # 1. Si no enviaron bóveda, buscar en su lista la que es por defecto
+    # 1. Si no enviaron cofre, buscar en su lista la que es por defecto
     if password_in.vault_id is None:
         default_vault = next((v for v in db_vaults if v.is_default), None)
         if not default_vault:
-            raise HTTPException(status_code=500, detail="Error interno: No tienes bóveda por defecto.")
+            raise HTTPException(status_code=500, detail="Error interno: No tienes cofre por defecto.")
         password_in.vault_id = default_vault.vault_id
     else:
-        # 2. Si enviaron bóveda, verificar que sea suya
+        # 2. Si enviaron cofre, verificar que sea suyo
         if not any(v.vault_id == password_in.vault_id for v in db_vaults):
-            raise HTTPException(status_code=403, detail="Bóveda no autorizada o no existe.")
+            raise HTTPException(status_code=403, detail="Cofre no autorizado o no existe.")
         
     return crud_pwd.create_password(db=db, password_in=password_in)
 

@@ -5,8 +5,9 @@ import {
   X, Lock, Shield, KeyRound, Briefcase, Building, 
   Laptop, ShoppingCart, Wallet, CreditCard, Gamepad2, 
   Music, Film, Plane, Car, Globe, Heart, HelpCircle, 
-  Star, Smartphone, Code, Coffee, Camera, Folder, Gift 
+  Star, Smartphone, Code, Coffee, Camera, Folder, Gift, Loader2 
 } from "lucide-react";
+import { useCrypto } from "@/context/CryptoContext";
 
 export const VAULT_ICONS = [
   { name: "lock", icon: Lock },
@@ -49,10 +50,61 @@ interface CreateVaultModalProps {
 }
 
 export function CreateVaultModal({ onClose }: CreateVaultModalProps) {
+  const { fetchVaults, setSelectedVault } = useCrypto();
+
   const [selectedIcon, setSelectedIcon] = useState("lock");
   const [selectedColor, setSelectedColor] = useState(VAULT_COLORS[0]);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const getAuthToken = () => {
+    const cookies = document.cookie.split(';');
+    return cookies.find(c => c.trim().startsWith('ACHAVE_ACCESS_TOKEN='))?.split('=')[1];
+  };
+
+  const handleCreateVault = async () => {
+    if (!name.trim()) return;
+    setLoading(true);
+
+    try {
+      const token = getAuthToken();
+      const payload = {
+        name,
+        description: description || null,
+        icon: selectedIcon,
+        color: selectedColor
+      };
+
+      const res = await fetch("http://127.0.0.1:8000/vaults/", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        throw new Error("Error al crear el cofre");
+      }
+
+      const newVault = await res.json();
+      
+      // Update the global state
+      await fetchVaults();
+      
+      // Auto-select the newly created vault
+      setSelectedVault(newVault);
+      
+      onClose();
+    } catch (error) {
+      console.error(error);
+      alert("Hubo un error al crear el cofre.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
@@ -138,20 +190,20 @@ export function CreateVaultModal({ onClose }: CreateVaultModalProps) {
         <div className="flex flex-col md:flex-row gap-3 md:gap-4 mt-2">
           <button 
             onClick={onClose}
+            disabled={loading}
             className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3.5 px-4 rounded-[14px] transition-colors"
           >
             Cancelar
           </button>
           <button 
-            onClick={() => {
-              // Aquí implementaríamos la lógica de guardado
-              console.log({ name, description, selectedIcon, selectedColor })
-              onClose();
-            }}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 px-4 rounded-[14px] transition-colors flex items-center justify-center gap-2"
+            onClick={handleCreateVault}
+            disabled={loading || !name.trim()}
+            className={`flex-1 font-bold py-3.5 px-4 rounded-[14px] transition-colors flex items-center justify-center gap-2 ${
+              loading || !name.trim() ? "bg-green-600/50 text-white cursor-not-allowed" : "bg-green-600 hover:bg-green-700 text-white"
+            }`}
           >
-            Crear Cofre
-            <Lock className="w-4 h-4 ml-1" />
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Crear Cofre"}
+            {!loading && <Lock className="w-4 h-4 ml-1" />}
           </button>
         </div>
 

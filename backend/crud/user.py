@@ -17,7 +17,7 @@ def get_user_by_id(db: Session, user_id: UUID) -> User | None:
 
 def create_user(db: Session, user_in: UserCreate) -> User:
     """
-    Fase 1: Solo guarda el email. Sin password, sin bóveda.
+    Fase 1: Solo guarda el email. Sin password, sin cofre.
     """
     db_user = User(
         email=user_in.email,
@@ -30,7 +30,7 @@ def create_user(db: Session, user_in: UserCreate) -> User:
 
 def verify_user(db: Session, user_id: UUID) -> User | None:
     """
-    Fase 2: Marca is_verified=True y crea la bóveda por defecto.
+    Fase 2: Marca is_verified=True y crea el cofre por defecto.
     """
     db_user = get_user_by_id(db, user_id)
     if not db_user:
@@ -42,8 +42,8 @@ def verify_user(db: Session, user_id: UUID) -> User | None:
     db_user.is_verified = True
     
     default_vault = Vault(
-        name="Bóveda Principal",
-        description="Bóveda por defecto. No se puede eliminar.",
+        name="Cofre Principal",
+        description="Cofre por defecto. No se puede eliminar.",
         user_id=db_user.user_id,
         is_default=True
     )

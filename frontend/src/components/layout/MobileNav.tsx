@@ -13,8 +13,8 @@ export function MobileNav({ onOpenVaultModal }: { onOpenVaultModal: () => void }
       </Link>
 
       <Link href="/claves" className="flex flex-col items-center gap-1 min-w-[56px]">
-        <KeyRound className={`w-6 h-6 ${pathname.startsWith('/claves') ? 'text-green-600' : 'text-slate-500'}`} />
-        <span className={`text-[11px] ${pathname.startsWith('/claves') ? 'font-bold text-green-600' : 'font-semibold text-slate-500'}`}>
+        <KeyRound className={`w-6 h-6 ${pathname === '/claves' ? 'text-green-600' : 'text-slate-500'}`} />
+        <span className={`text-[11px] ${pathname === '/claves' ? 'font-bold text-green-600' : 'font-semibold text-slate-500'}`}>
           Claves
         </span>
       </Link>
