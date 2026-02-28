@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+import re
 from typing import List
 from uuid import UUID
 
 from database import get_db
 from schemas.password import PasswordCreate, PasswordUpdate, PasswordResponse
 from utils.security import get_current_user_id
+from utils.hash_check import hash_check
 import crud.password as crud_pwd
 import crud.vault as crud_vault
 
@@ -87,3 +89,21 @@ def delete_password(
     success = crud_pwd.delete_password(db=db, password_id=password_id)
     if not success:
         raise HTTPException(status_code=404, detail="Contraseña no encontrada")
+
+@password.get("/check-pwned/{password_hash}")
+def check_local_pwned(password_hash: str):
+    """
+    Comprueba si el hash de una contraseña está en la base de datos local (Rockyou).
+    """
+    # Validar que sea un hash SHA‑256
+    if not re.fullmatch(r"[0-9a-fA-F]{64}", password_hash):
+        raise HTTPException(
+            status_code=400,
+            detail="El hash debe ser SHA‑256."
+        )
+    try:
+        if hash_check(password_hash):
+            return {"is_pwned": True, "message": "¡El hash está en Rockyou!"}
+        return {"is_pwned": False, "message": "Contraseña segura"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
