@@ -7,8 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 def _getEnvFilePath() -> Path:
     moduleDir = Path(__file__).parent
-    appDir = moduleDir.parent.parent
-    envFile = appDir / ".env"
+    envFile = moduleDir / ".env"
     return envFile
 
 

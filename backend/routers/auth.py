@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from schemas.auth import GoogleAuthRequest 
+from schemas.user import GoogleAuthRequest 
 from utils.oauth import verify_google_token
 from utils.security import create_access_token
 from database import get_db
