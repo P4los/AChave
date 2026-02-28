@@ -146,7 +146,7 @@ export default function LoginPage() {
             Tus contraseñas,<br className="hidden md:block" /> seguras y siempre a mano.
           </h1>
 
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-6 mb-10">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center shrink-0">
                 <Lock className="w-5 h-5 text-green-400" />
