@@ -104,7 +104,7 @@ def delete_password(
         raise HTTPException(status_code=404, detail="Contraseña no encontrada")
 
 
-@password.get("/check-pwned/{password_hash}")
+@password.get("/check-vulnerability/{password_hash}")
 def check_local_pwned(password_hash: str):
     """
     Comprueba si el hash de una contraseña está en la base de datos local (Rockyou).
@@ -114,7 +114,7 @@ def check_local_pwned(password_hash: str):
         raise HTTPException(status_code=400, detail="El hash debe ser SHA‑256.")
     try:
         if hash_check(password_hash):
-            return {"is_pwned": True, "message": "¡El hash está en Rockyou!"}
-        return {"is_pwned": False, "message": "Contraseña segura"}
+            return {"is_vulnerable": True, "message": "Contraseña comprometida, intenta con una nueva"}
+        return {"is_vulnerable": False, "message": "Contraseña segura."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
