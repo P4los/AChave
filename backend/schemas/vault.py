@@ -10,13 +10,13 @@ class VaultBase(BaseModel):
     icon: Optional[str] = None
     color: Optional[str] = None
 
-# Esquema para crear una bóveda
+# Esquema para crear un cofre
 class VaultCreate(VaultBase):
     pass
 
 # Esquema para actualizar
-class VaultUpdate(VaultBase):
-    name: str
+class VaultUpdate(BaseModel):
+    name: Optional[str] = None
     description: Optional[str] = None
     icon: Optional[str] = None
     color: Optional[str] = None
@@ -26,5 +26,6 @@ class VaultResponse(VaultBase):
     vault_id: UUID
     user_id: UUID
     timestamp: datetime
+    is_default: bool = False
 
     model_config = ConfigDict(from_attributes=True)

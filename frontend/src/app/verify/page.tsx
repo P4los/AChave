@@ -133,7 +133,7 @@ function VerifyContent() {
       // 3. Cifrar la Llave Privada RSA con AES (Master Password)
       const encryptedPrivateKey = await encryptAES(privateKeyPem);
 
-      // 4. Generar Validaror: Ciframos la palabra comodín "SESAMO_ABIERTO" con AES (Master Password)
+      // 4. Generar Validaor: Ciframos la palabra comodín "SESAMO_ABIERTO" con AES (Master Password)
       // Para saber en el futuro si la Master Password desencriptó correctamente el AES.
       const validadorCifrado = await encryptAES("SESAMO_ABIERTO");
 
@@ -221,7 +221,7 @@ function VerifyContent() {
                 Crea tu Master Password
               </h2>
               <p className="text-[15px] font-semibold text-slate-500">
-                Has verificado tu correo con éxito. Ahora elige una contraseña maestra única y fuerte para proteger toda tu bóveda digital.
+                Has verificado tu correo con éxito. Ahora elige una contraseña maestra única y fuerte para proteger todo tu cofre digital.
               </p>
             </div>
 

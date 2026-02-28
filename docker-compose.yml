@@ -47,5 +47,15 @@ services:
       - backend
     restart: always
 
+  # Herramienta gráfica para ver la base de datos
+  adminer:
+    image: adminer
+    container_name: achave-adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+
 volumes:
   achave_pg_data:

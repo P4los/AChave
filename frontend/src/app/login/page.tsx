@@ -2,6 +2,54 @@
 
 import { useState } from "react";
 import { ShieldCheck, Lock, TriangleAlert, Shuffle, Eye, EyeOff } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useCrypto } from "@/context/CryptoContext";
+
+const derivationAndValidation = async (masterKey: string, encryptedValidator: string, encryptedPrivateKey: string, token: string) => {
+  const forge = await import('node-forge');
+  const saltBytes = new TextEncoder().encode(token.substring(0, 16)); 
+  
+  const importedMasterKey = await window.crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(masterKey),
+    { name: "PBKDF2" },
+    false,
+    ["deriveBits", "deriveKey"]
+  );
+
+  const aesKey = await window.crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: saltBytes, iterations: 100000, hash: "SHA-256" },
+    importedMasterKey,
+    { name: "AES-GCM", length: 256 },
+    true,
+    ["encrypt", "decrypt"]
+  );
+
+  const decryptAES = async (b64Ciphertext: string): Promise<string> => {
+    try {
+      const combinedPayload = new Uint8Array(Buffer.from(b64Ciphertext, 'base64'));
+      const iv = combinedPayload.slice(0, 12);
+      const ciphertext = combinedPayload.slice(12);
+
+      const decryptedBuffer = await window.crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: iv },
+        aesKey,
+        ciphertext
+      );
+      return new TextDecoder().decode(decryptedBuffer);
+    } catch (e) {
+      throw new Error("Clave AES inválida o datos corruptos");
+    }
+  };
+
+  const validador = await decryptAES(encryptedValidator);
+  if (validador !== "SESAMO_ABIERTO") {
+    throw new Error("Operación fallida.");
+  }
+
+  const privateKeyPem = await decryptAES(encryptedPrivateKey);
+  return privateKeyPem;
+};
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -12,6 +60,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+
+  const router = useRouter();
+  const { setKeys } = useCrypto();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,14 +91,32 @@ export default function LoginPage() {
       }
 
       if (isLogin) {
-        // Guardar el JWT como Cooke para que el Middleware se entere
+        // 1. Guardar el JWT como Cooke para que el Middleware se entere
         document.cookie = `ACHAVE_ACCESS_TOKEN=${data.access_token}; path=/; max-age=86400; SameSite=Strict;`;
         
-        // TODO: En el futuro guardar también el paquete criptográfico de la respuesta localmente
-        console.log("Login exitoso. JWT guardado en cookie:", data.access_token);
+        // 2. Extraer información encriptada del servidor para el ZK-Crypto
+        const meRes = await fetch("http://127.0.0.1:8000/auth/me", {
+          headers: { "Authorization": `Bearer ${data.access_token}` }
+        });
+        const meData = await meRes.json();
+
+        if (meData.validador_cifrado && meData.llave_privada_cifrada) {
+           // 3. Desencriptar localmente AHORA en segundo plano antes de cambiar de página
+           const privateKey = await derivationAndValidation(
+             masterKey, 
+             meData.validador_cifrado, 
+             meData.llave_privada_cifrada,
+             data.access_token
+           );
+           
+           // 4. Guardar en MEMORIA GLOBAL (Contexto)
+           setKeys({ pub: meData.llave_publica, priv: privateKey });
+        }
         
         setSuccessMsg("¡Sesión iniciada correctamente! Cargando tu cofre...");
-        setTimeout(() => window.location.href = "/claves", 1500);
+        
+        // 5. Usar router.push permite mantener vivo el Global Context state
+        setTimeout(() => router.push("/claves"), 1000);
       } else {
         console.log("Registro exitoso:", data);
         setSuccessMsg("¡Cuenta creada! Revisa tu bandeja de entrada para verificar tu email.");
@@ -55,7 +124,7 @@ export default function LoginPage() {
         setMasterKey("");
       }
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message === "Operación fallida." ? "Master Password incorrecta localmente" : err.message);
     } finally {
       setLoading(false);
     }
@@ -104,7 +173,7 @@ export default function LoginPage() {
               </div>
               <div className="flex flex-col">
                 <span className="font-bold text-[16px] text-white">Generador fortificado</span>
-                <span className="text-sm text-slate-400">Cifrado de grado militar para proteger toda tu bóveda digital.</span>
+                <span className="text-sm text-slate-400">Cifrado de grado militar para proteger todo tu cofre digital.</span>
               </div>
             </div>
           </div>
