@@ -4,6 +4,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from routers.auth import router as auth_router
 from routers.password import password
 from routers.vaults import vaults
+from database import engine, Base
+
+# Importar todos los modelos para que SQLAlchemy los conozca
+import models.user
+import models.vault
+import models.password
+
+# Crear las tablas automáticamente si no existen
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="AChave Backend",
