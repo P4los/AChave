@@ -63,7 +63,7 @@ export function MobileHeader({ onOpenVaultModal }: { onOpenVaultModal: () => voi
                         >
                           <VaultIcon className="w-4 h-4" />
                         </div>
-                        <span className={`text-[14px] font-bold truncate ${isSelected ? 'text-slate-900' : 'text-slate-600'}`}>
+                        <span className={`text-[14px] font-bold max-w-30 ${isSelected ? 'text-slate-900' : 'text-slate-600'}`}>
                           {vault.name}
                         </span>
                       </div>

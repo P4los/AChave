@@ -62,7 +62,7 @@ export default function LoginPage() {
   const [successMsg, setSuccessMsg] = useState("");
 
   const router = useRouter();
-  const { setKeys } = useCrypto();
+  const { setKeys, fetchVaults } = useCrypto();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,11 +111,14 @@ export default function LoginPage() {
            
            // 4. Guardar en MEMORIA GLOBAL (Contexto)
            setKeys({ pub: meData.llave_publica, priv: privateKey });
+           
+           // 5. Instigar la recarga de los cofres para que la UI se entere instantáneamente
+           await fetchVaults();
         }
         
         setSuccessMsg("¡Sesión iniciada correctamente! Cargando tu cofre...");
         
-        // 5. Usar router.push permite mantener vivo el Global Context state
+        // 6. Usar router.push permite mantener vivo el Global Context state
         setTimeout(() => router.push("/claves"), 1000);
       } else {
         console.log("Registro exitoso:", data);
@@ -242,7 +245,7 @@ export default function LoginPage() {
                 loading ? "bg-green-600/50 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 shadow-green-600/20"
               }`}
             >
-              {loading ? "Cargando..." : (isLogin ? "Iniciar sesión con mi cofre" : "Crear mi cofre seguro")}
+              {loading ? "Cargando..." : (isLogin ? "Iniciar sesión" : "Crear mi cofre seguro")}
             </button>
             
             {error && (

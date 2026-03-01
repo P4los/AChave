@@ -32,7 +32,29 @@ interface CryptoContextProps {
 const CryptoContext = createContext<CryptoContextProps | undefined>(undefined);
 
 export const CryptoProvider = ({ children }: { children: ReactNode }) => {
-  const [keys, setKeys] = useState<CryptoKeys | null>(null);
+  const [keys, setKeys] = useState<CryptoKeys | null>(() => {
+    // Intentar recuperar las llaves criptográficas de la sesión actual al recargar
+    if (typeof window !== "undefined") {
+      const storedKeys = localStorage.getItem("achave_keys");
+      if (storedKeys) {
+        try {
+          return JSON.parse(storedKeys);
+        } catch (e) {
+          return null;
+        }
+      }
+    }
+    return null;
+  });
+
+  // Mantener las llaves sincronizadas con localStorage durante el uso
+  useEffect(() => {
+    if (keys) {
+      localStorage.setItem("achave_keys", JSON.stringify(keys));
+    } else {
+      localStorage.removeItem("achave_keys");
+    }
+  }, [keys]);
   
   const [vaults, setVaults] = useState<Vault[]>([]);
   const [selectedVault, setSelectedVault] = useState<Vault | null>(null);
@@ -75,6 +97,9 @@ export const CryptoProvider = ({ children }: { children: ReactNode }) => {
     setKeys(null);
     setVaults([]);
     setSelectedVault(null);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("achave_keys");
+    }
   };
 
   const deleteVault = async (id: string, isCurrentlySelected: boolean) => {

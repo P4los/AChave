@@ -19,13 +19,6 @@ export function MobileNav({ onOpenVaultModal }: { onOpenVaultModal: () => void }
         </span>
       </Link>
 
-      <Link href="/riesgos" className="flex flex-col items-center gap-1 min-w-[56px]">
-        <TriangleAlert className={`w-6 h-6 ${pathname.startsWith('/riesgos') ? 'text-red-500' : 'text-slate-500'}`} />
-        <span className={`text-[11px] ${pathname.startsWith('/riesgos') ? 'font-bold text-red-500' : 'font-semibold text-slate-500'}`}>
-          Riesgos
-        </span>
-      </Link>
-
       <Link href="/generador" className="flex flex-col items-center gap-1 min-w-[56px]">
         <Shuffle className={`w-6 h-6 ${pathname.startsWith('/generador') ? 'text-green-600' : 'text-slate-500'}`} />
         <span className={`text-[11px] ${pathname.startsWith('/generador') ? 'font-bold text-green-600' : 'font-semibold text-slate-500'}`}>

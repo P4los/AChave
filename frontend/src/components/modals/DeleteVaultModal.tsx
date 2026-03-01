@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, TriangleAlert, Loader2 } from 'lucide-react';
 import { useCrypto, Vault } from '@/context/CryptoContext';
+import { toast } from 'react-hot-toast';
 
 interface DeleteVaultModalProps {
   onClose: () => void;
@@ -17,9 +18,10 @@ export function DeleteVaultModal({ onClose, vault }: DeleteVaultModalProps) {
     const success = await deleteVault(vault.vault_id, isCurrentlySelected);
     
     if (success) {
+      toast.success("Cofre eliminado correctamente");
       onClose();
     } else {
-      alert("Hubo un error al eliminar el cofre. Verifica que tienes conexión.");
+      toast.error("Hubo un error al eliminar el cofre. Verifica que tienes conexión.");
       setIsDeleting(false);
     }
   };

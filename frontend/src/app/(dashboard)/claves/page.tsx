@@ -4,6 +4,9 @@ import { useState, useEffect } from "react";
 import { Search, Copy, Eye, ExternalLink, ShieldCheck, TriangleAlert, Loader2, Plus, EyeOff, Lock, X, Save, Shuffle } from "lucide-react";
 import { useCrypto } from "@/context/CryptoContext";
 import { usePasswordGenerator } from "@/hooks/usePasswordGenerator";
+import { usePwnedPassword } from "@/hooks/usePwnedPassword";
+import { usePwnedPasswordBatch } from "@/hooks/usePwnedPasswordBatch";
+import { toast } from "react-hot-toast";
 
 // Funciones criptográficas (RSA para passwords)
 const encryptFormPassword = async (plainPassword: string, pubKeyPem: string) => {
@@ -21,59 +24,16 @@ const decryptVaultPassword = async (encryptedB64: string, privKeyPem: string) =>
     return decrypted;
 };
 
-// Función de derivación y validación local para re-desbloquear el cofre
-const derivationAndValidation = async (masterKey: string, encryptedValidator: string, encryptedPrivateKey: string, token: string) => {
-  const saltBytes = new TextEncoder().encode(token.substring(0, 16)); 
-  
-  const importedMasterKey = await window.crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(masterKey),
-    { name: "PBKDF2" },
-    false,
-    ["deriveBits", "deriveKey"]
-  );
-
-  const aesKey = await window.crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt: saltBytes, iterations: 100000, hash: "SHA-256" },
-    importedMasterKey,
-    { name: "AES-GCM", length: 256 },
-    true,
-    ["encrypt", "decrypt"]
-  );
-
-  const decryptAES = async (b64Ciphertext: string): Promise<string> => {
-    try {
-      const combinedPayload = new Uint8Array(Buffer.from(b64Ciphertext, 'base64'));
-      const iv = combinedPayload.slice(0, 12);
-      const ciphertext = combinedPayload.slice(12);
-
-      const decryptedBuffer = await window.crypto.subtle.decrypt(
-        { name: "AES-GCM", iv: iv },
-        aesKey,
-        ciphertext
-      );
-      return new TextDecoder().decode(decryptedBuffer);
-    } catch (e) {
-      throw new Error("Clave AES inválida o datos corruptos");
-    }
-  };
-
-  const validador = await decryptAES(encryptedValidator);
-  if (validador !== "SESAMO_ABIERTO") {
-    throw new Error("Operación fallida.");
-  }
-
-  const privateKeyPem = await decryptAES(encryptedPrivateKey);
-  return privateKeyPem;
-};
 
 
 export default function MisClavesPage() {
   const { keys, setKeys, isUnlocked, selectedVault } = useCrypto(); 
 
+  const [isMounted, setIsMounted] = useState(false);
   const [loadingContent, setLoadingContent] = useState(false);
   const [passwords, setPasswords] = useState<any[]>([]);
   const [visiblePasswords, setVisiblePasswords] = useState<{ [key: string]: string }>({});
+  const [vulnerabilities, setVulnerabilities] = useState<{ [key: string]: boolean }>({});
 
   const [showModal, setShowModal] = useState(false);
   const [newWeb, setNewWeb] = useState("");
@@ -83,15 +43,12 @@ export default function MisClavesPage() {
   const [newNotes, setNewNotes] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
 
+  const { isCheckingVuln, isVulnerable } = usePwnedPassword(newPass);
+  const { isCheckingBatch, checkBatchVulnerabilities } = usePwnedPasswordBatch();
+
   const { generatePassword } = usePasswordGenerator();
 
-  // Estados para el Desbloqueo Local
-  const [lockedEmail, setLockedEmail] = useState("");
-  const [lockedCryptoData, setLockedCryptoData] = useState<any>(null);
-  const [masterKeyInput, setMasterKeyInput] = useState("");
-  const [showMasterKey, setShowMasterKey] = useState(false);
-  const [unlockError, setUnlockError] = useState("");
-  const [isUnlocking, setIsUnlocking] = useState(false);
+
 
   const getAuthToken = () => {
     if (typeof document === 'undefined') return null;
@@ -99,33 +56,19 @@ export default function MisClavesPage() {
     return cookies.find(c => c.trim().startsWith('ACHAVE_ACCESS_TOKEN='))?.split('=')[1];
   };
 
-  // 1. Obtiene las claves del servidor si el usuario no tiene llave privada en memoria
+  // 1. Efecto inicial de montaje para evitar el flash de SSR ("Cofre Bloqueado" por 1ms)
   useEffect(() => {
-    if (!isUnlocked) {
-      const token = getAuthToken();
-      if (!token) {
-        window.location.href = "/login";
-        return;
-      }
-      
-      fetch("http://127.0.0.1:8000/auth/me", {
-        headers: { "Authorization": `Bearer ${token}` }
-      })
-      .then(res => {
-        if (!res.ok) throw new Error("Token expirado");
-        return res.json();
-      })
-      .then(data => {
-        setLockedEmail(data.email);
-        setLockedCryptoData(data);
-      })
-      .catch(() => {
-        window.location.href = "/login";
-      });
-    }
-  }, [isUnlocked]);
+    setIsMounted(true);
+  }, []);
 
-  // 2. Trae las contraseñas reales cuando ya estemos desbloqueados y con cofre
+  // 2. Redirige a login si el usuario no tiene llaves en memoria
+  useEffect(() => {
+    if (isMounted && !isUnlocked) {
+      window.location.href = "/login";
+    }
+  }, [isUnlocked, isMounted]);
+
+  // 3. Trae las contraseñas reales cuando ya estemos desbloqueados y con cofre
   useEffect(() => {
     if (isUnlocked && selectedVault) {
       fetchPasswords();
@@ -141,8 +84,30 @@ export default function MisClavesPage() {
         headers: {"Authorization": `Bearer ${token}`}
       });
       const pData = await pRes.json();
-      setPasswords(Array.isArray(pData) ? pData : []);
-      setVisiblePasswords({}); // clear visible ones
+      const items = Array.isArray(pData) ? pData : [];
+      setPasswords(items);
+      setVisiblePasswords({});
+      setVulnerabilities({});
+
+      // Lote de vulnerabilidades silencioso en 2do plano (requiere la llave privada de JS)
+      if (keys?.priv && items.length > 0) {
+        // Desencriptamos todo a escondidas sin mostrarlo en UI global
+        const plainsForChecking = [];
+        for (const item of items) {
+          try {
+            const plain = await decryptVaultPassword(item.password, keys.priv);
+            plainsForChecking.push({ id: item.passwords_id, plainText: plain });
+          } catch(e) { /* skip */ }
+        }
+        
+        // Llamar al batch checker solo con los descifrados exitosos
+        if (plainsForChecking.length > 0) {
+          checkBatchVulnerabilities(plainsForChecking).then(vulns => {
+             setVulnerabilities(vulns);
+          });
+        }
+      }
+
     } catch (err) {
       console.error(err);
       setPasswords([]);
@@ -151,32 +116,6 @@ export default function MisClavesPage() {
     }
   };
 
-  const handleUnlock = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setUnlockError("");
-    setIsUnlocking(true);
-    
-    try {
-      const token = getAuthToken();
-      if (!token || !lockedCryptoData) throw new Error("No hay token o datos");
-      
-      // Decrypt the private key locally inside the browser using AES-GCM
-      const privateKey = await derivationAndValidation(
-        masterKeyInput, 
-        lockedCryptoData.validador_cifrado, 
-        lockedCryptoData.llave_privada_cifrada,
-        token
-      );
-      
-      // Setup CryptoContext which will instantly render the vault
-      setKeys({ pub: lockedCryptoData.llave_publica, priv: privateKey });
-      
-    } catch (err: any) {
-      setUnlockError(err.message === "Operación fallida." ? "Master Password incorrecta" : "Error al desbloquear.");
-    } finally {
-      setIsUnlocking(false);
-    }
-  };
 
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -202,9 +141,10 @@ export default function MisClavesPage() {
 
       setShowModal(false);
       setNewWeb(""); setNewUrl(""); setNewEmail(""); setNewPass(""); setNewNotes("");
+      toast.success("Clave guardada con éxito");
       fetchPasswords();
     } catch (err) {
-      alert("Error encriptando y guardando.");
+      toast.error("Error encriptando y guardando.");
     }
   };
 
@@ -231,89 +171,17 @@ export default function MisClavesPage() {
         const plain = await decryptVaultPassword(cipherText, keys.priv);
         setVisiblePasswords({ ...visiblePasswords, [pwdId]: plain });
       } catch (err) {
-        alert("Corrupción al descifrar esta contraseña.");
+        toast.error("Corrupción al descifrar esta contraseña.");
       }
     }
   };
 
-  // Si la burbuja global no se ha llenado (ej: si recarga la página F5)
+  if (!isMounted) {
+    return <div className="flex flex-col h-[80vh] items-center justify-center p-4"></div>;
+  }
+
   if (!isUnlocked) {
-     return (
-        <div className="flex flex-col h-[80vh] items-center justify-center p-4">
-          <div className="bg-white rounded-[32px] p-8 mt-20 md:p-10 shadow-2xl shadow-slate-200/50 max-w-[480px] w-full flex flex-col relative">
-            <div className="flex flex-col items-center text-center mb-8 relative z-10">
-              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-6">
-                <ShieldCheck className="w-8 h-8 text-green-600" />
-              </div>
-              <h2 className="text-2xl font-extrabold text-slate-900 mb-2">Cofre Bloqueado</h2>
-              <p className="text-slate-500 text-[15px] font-medium leading-relaxed">
-                Por tu seguridad, la Master Password se borra de la memoria al recargar la página. Vuelve a introducirla para descifrar tu cofre.
-              </p>
-            </div>
-            
-            <form onSubmit={handleUnlock} className="flex flex-col gap-5 relative z-10">
-              <div className="flex flex-col gap-2">
-                <label className="text-[14px] font-bold text-slate-900">Usuario Activo</label>
-                <input 
-                  type="email" 
-                  readOnly
-                  value={lockedEmail || "Cargando usuario..."}
-                  className="w-full bg-slate-100 border border-slate-200 text-slate-500 text-[15px] rounded-[14px] px-4 py-3.5 focus:outline-none placeholder:text-slate-400 font-medium cursor-not-allowed"
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="text-[14px] font-bold text-slate-900">Master Password</label>
-                <div className="relative w-full">
-                  <input 
-                    type={showMasterKey ? "text" : "password"}
-                    required
-                    value={masterKeyInput}
-                    onChange={(e) => setMasterKeyInput(e.target.value)}
-                    placeholder="Tu contraseña secreta"
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-[15px] rounded-[14px] pl-4 pr-12 py-3.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all font-medium"
-                  />
-                  <button 
-                    type="button"
-                    onClick={() => setShowMasterKey(!showMasterKey)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
-                  >
-                    {showMasterKey ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                </div>
-              </div>
-
-              {unlockError && (
-                <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm font-semibold border border-red-100 flex items-start gap-2">
-                  <TriangleAlert className="w-5 h-5 shrink-0" />
-                  <p>{unlockError}</p>
-                </div>
-              )}
-
-              <button 
-                type="submit"
-                disabled={isUnlocking || !lockedEmail}
-                className={`mt-2 w-full text-white font-bold py-4 px-6 rounded-[14px] transition-all shadow-sm flex justify-center items-center gap-2 ${
-                  isUnlocking || !lockedEmail ? "bg-green-600/50 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 shadow-green-600/20"
-                }`}
-              >
-                {isUnlocking ? <Loader2 className="w-5 h-5 animate-spin" /> : <Lock className="w-5 h-5" />}
-                {isUnlocking ? "Descifrando claves..." : "Desbloquear Cofre"}
-              </button>
-            </form>
-            
-            <button 
-              onClick={() => {
-                document.cookie = 'ACHAVE_ACCESS_TOKEN=; path=/; max-age=0;';
-                window.location.href = '/login';
-              }} 
-              className="mt-6 text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors text-center relative z-10"
-            >
-              Cerrar sesión y cambiar de cuenta
-            </button>
-          </div>
-        </div>
-     );
+    return <div className="flex flex-col h-[80vh] items-center justify-center p-4"></div>;
   }
 
   return (
@@ -321,9 +189,6 @@ export default function MisClavesPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <h1 className="text-[26px] md:text-[32px] font-extrabold text-slate-900">Mis Claves</h1>
-          <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-md font-bold flex items-center gap-1">
-             <ShieldCheck className="w-3 h-3" /> ZK-Protegidas
-          </span>
         </div>
         <button 
           onClick={() => setShowModal(true)}
@@ -358,7 +223,18 @@ export default function MisClavesPage() {
                   <span className="font-extrabold text-slate-400 capitalize">{item.web.substring(0,2)}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-base font-bold text-slate-900 leading-tight">{item.web}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-bold text-slate-900 leading-tight">{item.web}</span>
+                    {vulnerabilities[item.passwords_id] === true ? (
+                      <span className="flex items-center gap-1 bg-red-100 text-red-600 px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase" title="Esta contraseña apareció en filtraciones públicas">
+                        <TriangleAlert className="w-3 h-3" /> Vulnerable
+                      </span>
+                    ) : vulnerabilities[item.passwords_id] === false ? (
+                      <span className="flex items-center gap-1 bg-green-100 text-green-700 px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase" title="No se han encontrado filtraciones conocidas">
+                        <ShieldCheck className="w-3 h-3" /> Segura
+                      </span>
+                    ) : null}
+                  </div>
                   <span className="text-xs text-slate-500">{item.user_email}</span>
                 </div>
               </div>
@@ -373,10 +249,19 @@ export default function MisClavesPage() {
                 <div className="h-4 w-[1px] bg-slate-200 mx-2 hidden md:block"></div>
 
                 <button 
-                  onClick={() => {
+                  onClick={async () => {
                     const passToCopy = visiblePasswords[item.passwords_id];
-                    if(passToCopy) navigator.clipboard.writeText(passToCopy).then(() => alert("Copiada!"));
-                    else alert("Hazla visible antes de copiar (En produccion se desencriptaría en 2do plano)");
+                    if (passToCopy) {
+                      navigator.clipboard.writeText(passToCopy).then(() => toast.success("Copiada al portapapeles!"));
+                    } else if (keys) {
+                      try {
+                        // Desencriptamos "al vuelo" en 2do plano sin mostrarlo en UI
+                        const plain = await decryptVaultPassword(item.password, keys.priv);
+                        navigator.clipboard.writeText(plain).then(() => toast.success("Copiada de forma segura!"));
+                      } catch (err) {
+                        toast.error("Error al descifrar para copiar.");
+                      }
+                    }
                   }}
                   className="text-slate-400 hover:text-slate-900 transition-colors p-1.5"
                 >
@@ -387,9 +272,6 @@ export default function MisClavesPage() {
                   className="text-slate-400 hover:text-slate-900 transition-colors p-1.5"
                 >
                   {visiblePasswords[item.passwords_id] ? <EyeOff className="h-5 w-5 text-red-500"/> : <Eye className="h-5 w-5" />}
-                </button>
-                <button className="text-slate-400 hover:text-slate-900 transition-colors p-1.5">
-                  <ExternalLink className="h-5 w-5" />
                 </button>
               </div>
             </div>
@@ -420,7 +302,7 @@ export default function MisClavesPage() {
               
               <div className="flex flex-col gap-2">
                 <label className="text-[14px] font-bold text-slate-900">URL o Enlace</label>
-                <input type="url" value={newUrl} onChange={e=>setNewUrl(e.target.value)} placeholder="https://ejemplo.com" className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-[15px] rounded-[14px] px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all placeholder:text-slate-400 font-medium" />
+                <input type="text" value={newUrl} onChange={e=>setNewUrl(e.target.value)} placeholder="https://ejemplo.com" className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-[15px] rounded-[14px] px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all placeholder:text-slate-400 font-medium" />
               </div>
               
               <div className="flex flex-col gap-2">
@@ -453,7 +335,23 @@ export default function MisClavesPage() {
                     {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
-                <p className="text-[11px] text-green-600 font-bold mt-1 flex items-center gap-1"><ShieldCheck className="w-3 h-3"/> Se encriptará localmente antes de enviarse.</p>
+                {isCheckingVuln ? (
+                  <p className="text-xs font-semibold text-blue-500 mt-1 flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Comprobando en filtraciones seguras...
+                  </p>
+                ) : isVulnerable === true ? (
+                  <p className="text-xs font-semibold text-red-600 mt-1 flex items-center gap-1">
+                    <TriangleAlert className="w-3 h-3" /> Contraseña vulnerable. Genera otra mejor.
+                  </p>
+                ) : isVulnerable === false && newPass.length >= 8 ? (
+                  <p className="text-[11px] text-green-600 font-bold mt-1 flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3"/> Contraseña segura y robusta.
+                  </p>
+                ) : newPass.length > 0 && newPass.length < 8 ? (
+                  <p className="text-[11px] text-orange-600 font-bold mt-1 flex items-center gap-1">
+                    <TriangleAlert className="w-3 h-3" /> Mínimo 8 caracteres requeridos.
+                  </p>
+                ) : null}
               </div>
 
               <div className="flex flex-col gap-2">
@@ -471,7 +369,13 @@ export default function MisClavesPage() {
                 <button type="button" onClick={() => setShowModal(false)} className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-900 font-bold py-3.5 px-6 rounded-[14px] transition-colors flex items-center justify-center">
                   Cancelar
                 </button>
-                <button type="submit" className="bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 px-6 rounded-[14px] transition-colors flex items-center justify-center gap-2">
+                <button 
+                  type="submit" 
+                  disabled={isCheckingVuln || isVulnerable === true || newPass.length < 8}
+                  className={`font-bold py-3.5 px-6 rounded-[14px] transition-colors flex items-center justify-center gap-2 ${
+                    isCheckingVuln || isVulnerable === true || newPass.length < 8 ? "bg-green-600/50 text-white cursor-not-allowed" : "bg-green-600 hover:bg-green-700 text-white"
+                  }`}
+                >
                   Guardar Clave <Save className="hidden md:block w-4 h-4" />
                 </button>
               </div>

@@ -9,7 +9,6 @@ import { Trash2 } from 'lucide-react';
 
 const sidebarLinks = [
   { href: '/claves', icon: KeyRound, label: 'Mis Claves' },
-  { href: '/riesgos', icon: TriangleAlert, label: 'Riesgos', alert: true },
   { href: '/generador', icon: Shuffle, label: 'Generador' },
   { href: '/ajustes', icon: Settings, label: 'Ajustes' },
 ];

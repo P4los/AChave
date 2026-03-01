@@ -3,10 +3,13 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ShieldCheck, TriangleAlert, Eye, EyeOff, KeyRound, Loader2 } from "lucide-react";
+import { usePwnedPassword } from "@/hooks/usePwnedPassword";
+import { useCrypto } from "@/context/CryptoContext";
 
 function VerifyContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { setKeys, fetchVaults } = useCrypto();
   
   const [token, setToken] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(true);
@@ -16,6 +19,8 @@ function VerifyContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [setupError, setSetupError] = useState("");
+
+  const { isCheckingVuln, isVulnerable } = usePwnedPassword(masterKey);
 
   // 1. Al cargar la página, extraemos el token y verificamos el email automáticamente
   useEffect(() => {
@@ -159,7 +164,11 @@ function VerifyContent() {
         throw new Error(data.detail || "Error al configurar la Master Password.");
       }
 
-      console.log("Cofre configurado con éxito:", data);
+      //console.log("Cofre configurado con éxito:", data);
+      
+      
+      setKeys({ pub: publicKeyPem, priv: privateKeyPem });
+      await fetchVaults();
       
       // ¡Todo listo! Redirigimos al Dashboard (Ya tienen la sesión puesta en la Cookie)
       router.push("/claves");
@@ -182,7 +191,7 @@ function VerifyContent() {
         </div>
 
         <div className="flex flex-col gap-10 mt-16 md:mt-0 z-10 relative">
-          <h1 className="text-[32px] md:text-[48px] font-extrabold leading-tight text-white max-w-[450px]">
+          <h1 className="text-[32px] mb-4 md:text-[48px] font-extrabold leading-tight text-white max-w-[450px]">
             El último paso para tu seguridad absoluta.
           </h1>
         </div>
@@ -248,9 +257,23 @@ function VerifyContent() {
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
-                <p className="text-xs font-semibold text-slate-500 mt-1">
-                  Asegúrate de no olvidarla. Nosotros <span className="text-red-500 font-bold">no podemos recuperarla</span> por ti.
-                </p>
+                {isCheckingVuln ? (
+                  <p className="text-xs font-semibold text-blue-500 mt-1 flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Comprobando si es segura...
+                  </p>
+                ) : isVulnerable === true ? (
+                  <p className="text-xs font-semibold text-red-600 mt-1 flex items-center gap-1">
+                    <TriangleAlert className="w-3 h-3" /> Contraseña vulnerable. ¡Debes elegir otra!
+                  </p>
+                ) : isVulnerable === false && masterKey.length >= 8 ? (
+                  <p className="text-xs font-semibold text-green-600 mt-1 flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3" /> ¡Contraseña segura y robusta!
+                  </p>
+                ) : (
+                  <p className="text-xs font-semibold text-slate-500 mt-1">
+                    Asegúrate de no olvidarla. Nosotros <span className="text-red-500 font-bold">no podemos recuperarla</span> por ti.
+                  </p>
+                )}
               </div>
 
               {setupError && (
@@ -262,9 +285,9 @@ function VerifyContent() {
 
               <button 
                 type="submit"
-                disabled={isSubmitting || masterKey.length < 8}
+                disabled={isSubmitting || masterKey.length < 8 || isCheckingVuln || isVulnerable === true}
                 className={`mt-4 w-full text-white font-bold py-4 px-6 rounded-[14px] transition-all shadow-sm ${
-                  (isSubmitting || masterKey.length < 8) ? "bg-green-600/50 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 shadow-green-600/20"
+                  (isSubmitting || masterKey.length < 8 || isCheckingVuln || isVulnerable === true) ? "bg-green-600/50 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 shadow-green-600/20"
                 }`}
               >
                 {isSubmitting ? "Finalizando..." : "Generar llaves y finalizar"}

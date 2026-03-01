@@ -1,15 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, Save, Shuffle, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Save, Shuffle, Eye, EyeOff, ShieldCheck, Loader2, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { usePasswordGenerator } from "@/hooks/usePasswordGenerator";
+import { usePwnedPassword } from "@/hooks/usePwnedPassword";
 
 export default function NuevaClavePage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState("");
+
+  const { isCheckingVuln, isVulnerable } = usePwnedPassword(password);
 
   const { generatePassword } = usePasswordGenerator();
 
@@ -52,7 +55,7 @@ export default function NuevaClavePage() {
           <div className="flex flex-col gap-2">
             <label className="text-[14px] font-bold text-slate-900">URL o Enlace</label>
             <input 
-              type="url" 
+              type="text" 
               placeholder="https://ejemplo.com"
               className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-[15px] rounded-[14px] px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all placeholder:text-slate-400 font-medium"
             />
@@ -62,7 +65,7 @@ export default function NuevaClavePage() {
             <label className="text-[14px] font-bold text-slate-900">Nombre de Usuario / Correo</label>
             <input 
               type="text" 
-              placeholder="Ej. miguel@gmail.com o miguelg_dev"
+              placeholder="Ej. tucorreo@gmail.com o tuusuario"
               className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-[15px] rounded-[14px] px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all placeholder:text-slate-400 font-medium"
             />
           </div>
@@ -92,7 +95,23 @@ export default function NuevaClavePage() {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
-              <p className="text-[11px] text-green-600 font-bold flex items-center gap-1 mt-1"><ShieldCheck className="w-3 h-3"/> Se encriptará localmente usando la llave maestra.</p>
+              {isCheckingVuln ? (
+                <p className="text-xs font-semibold text-blue-500 mt-1 flex items-center gap-1">
+                  <Loader2 className="w-3 h-3 animate-spin" /> Comprobando en filtraciones seguras...
+                </p>
+              ) : isVulnerable === true ? (
+                <p className="text-xs font-semibold text-red-600 mt-1 flex items-center gap-1">
+                  <TriangleAlert className="w-3 h-3" /> Contraseña vulnerable. Genera otra mejor.
+                </p>
+              ) : isVulnerable === false && password.length >= 8 ? (
+                <p className="text-[11px] text-green-600 font-bold flex items-center gap-1 mt-1">
+                  <ShieldCheck className="w-3 h-3"/> Contraseña segura y robusta.
+                </p>
+              ) : password.length > 0 && password.length < 8 ? (
+                <p className="text-[11px] text-orange-600 font-bold flex items-center gap-1 mt-1">
+                  <TriangleAlert className="w-3 h-3" /> Mínimo 8 caracteres requeridos.
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -115,7 +134,10 @@ export default function NuevaClavePage() {
           </Link>
           <button 
             type="button"
-            className="bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 px-8 rounded-[14px] transition-colors flex items-center justify-center gap-2"
+            disabled={isCheckingVuln || isVulnerable === true || password.length < 8}
+            className={`font-bold py-3.5 px-8 rounded-[14px] transition-colors flex items-center justify-center gap-2 ${
+              isCheckingVuln || isVulnerable === true || password.length < 8 ? "bg-green-600/50 text-white cursor-not-allowed" : "bg-green-600 hover:bg-green-700 text-white"
+            }`}
           >
             Guardar Clave
             <Save className="hidden md:block w-4 h-4 ml-1" />

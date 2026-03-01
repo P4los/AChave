@@ -8,6 +8,7 @@ import {
   Star, Smartphone, Code, Coffee, Camera, Folder, Gift, Loader2 
 } from "lucide-react";
 import { useCrypto } from "@/context/CryptoContext";
+import { toast } from "react-hot-toast";
 
 export const VAULT_ICONS = [
   { name: "lock", icon: Lock },
@@ -97,10 +98,11 @@ export function CreateVaultModal({ onClose }: CreateVaultModalProps) {
       // Auto-select the newly created vault
       setSelectedVault(newVault);
       
+      toast.success("Cofre creado con éxito");
       onClose();
     } catch (error) {
       console.error(error);
-      alert("Hubo un error al crear el cofre.");
+      toast.error("Hubo un error al crear el cofre.");
     } finally {
       setLoading(false);
     }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { CryptoProvider } from "@/context/CryptoContext";
+import { Toaster } from 'react-hot-toast';
 
 const inter = Inter({
   variable: "--font-inter",
@@ -22,6 +23,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={`${inter.variable} font-sans antialiased text-slate-900 bg-slate-100 min-h-screen`}>
+        <Toaster position="top-right" />
         <CryptoProvider>
           {children}
         </CryptoProvider>
