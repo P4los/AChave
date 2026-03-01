@@ -13,6 +13,11 @@ services:
     volumes:
       - achave_pg_data:/var/lib/postgresql/data
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   backend:
     build:
@@ -22,14 +27,15 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./backend:/app    # Mapea tu código local al docker para que los cambios se reflejen al momento (hot-reload)
-    env_file:
-      - ./backend/.env
+      - ./backend:/app
     environment:
-      # Sobreescribe la URL para usar el nombre del contenedor "db" en lugar de "localhost"
       - DATABASE_URL=postgresql://postgres@db:5432/achave_db
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-cambia_esta_clave_en_produccion}
+      - JWT_EXPIRE_MINUTES=${JWT_EXPIRE_MINUTES:-60}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: always
 
   frontend:
@@ -40,14 +46,17 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./frontend:/app   # Mapea tu código local al docker para hot-reload
-      - /app/node_modules # Evita que tu carpeta local sobreescriba los modulos de node de linux
-      - /app/.next        # Protege el build de next cache
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      # La URL que el NAVEGADOR usa para llamar al backend.
+      # Si accedes desde otra máquina, cambia esto a la IP/dominio del servidor.
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
     depends_on:
       - backend
     restart: always
 
-  # Herramienta gráfica para ver la base de datos
   adminer:
     image: adminer
     container_name: achave-adminer
