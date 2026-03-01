@@ -550,6 +550,10 @@ CREATE TABLE passwords (
 | `DELETE` | `/passwords/{password_id}`          | Eliminar contraseña            |
 | `GET`    | `/passwords/check-pwned/{password}` | Validar vs HaveIBeenPwned      |
 
+#### 🔐 Validación de Contraseñas Comprometidas
+
+AChave integra la **API de Have I Been Pwned (HIBP)** para comparar las contraseñas guardadas y alertar al usuario si una contraseña ha sido comprometida en brechas de seguridad conocidas. El campo `compromised` se marca como `true` si la contraseña se encuentra en la base de datos de HIBP.
+
 ### Ejemplo de Petición Autenticada
 
 ```bash
@@ -652,70 +656,7 @@ AChave/
 
 ---
 
-## 🔄 Flujos Principales
-
-### 1. Flujo de Registro y Setup
-
-```mermaid
-stateDiagram-v2
-    [*] --> Registro: Usuario ingresa email
-    Registro --> VerificacionEmail: Env email verificación
-    VerificacionEmail --> ClickLink: Usuario click link
-    ClickLink --> Setup: Redirige a setup
-    Setup --> GenerarKeys: Frontend genera RSA
-    GenerarKeys --> MasterPassword: Usuario escribe master password
-    MasterPassword --> Encriptacion: Frontend cifra con AES
-    Encriptacion --> Envio: POST /auth/setup-crypto
-    Envio --> Guardado: Backend hashea y guarda
-    Guardado --> Completado: ✅ Listo para login
-    Completado --> [*]
-```
-
-### 2. Flujo de Creación de Contraseña
-
-```mermaid
-sequenceDiagram
-    actor User
-    participant Frontend
-    participant LocalEncryption as Encryption Engine
-    participant Backend
-    participant Database
-
-    User->>Frontend: 1. Click "Nueva Contraseña"
-    Frontend->>Frontend: Muestra formulario
-    User->>Frontend: 2. Ingresa datos (web, email, pwd)
-    Frontend->>LocalEncryption: 3. Cifra con AES + llaves
-    LocalEncryption-->>Frontend: Ciphertext
-    Frontend->>Backend: 4. POST /passwords/ (ciphertext)
-    Backend->>Database: 5. Guardar ciphertext opaco
-    Database-->>Backend: ID generado
-    Backend-->>Frontend: ✅ Contraseña guardada
-    Frontend-->>User: Notificación exitosa
-```
-
-### 3. Flujo de Recuperación de Contraseña
-
-```mermaid
-sequenceDiagram
-    actor User
-    participant Frontend
-    participant LocalDecryption as Decryption Engine
-    participant Backend
-    participant Database
-
-    User->>Frontend: 1. Click en contraseña guardada
-    Frontend->>Backend: 2. GET /passwords/{id}
-    Backend->>Database: 3. Obtener ciphertext
-    Database-->>Backend: Ciphertext
-    Backend-->>Frontend: Envía ciphertext
-    Frontend->>LocalDecryption: 4. Desencripta con llaves privadas
-    LocalDecryption-->>Frontend: Contraseña en claro
-    Frontend-->>User: 5. Muestra contraseña (temporal, max 30s)
-```
-
----
-
-## 🛠️ Troubleshooting
+## ️ Troubleshooting
 
 ### Problema: "Database connection refused"
 
