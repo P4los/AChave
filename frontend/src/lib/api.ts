@@ -112,10 +112,10 @@ export async function getMe(): Promise<UserMeResponse> {
     return apiFetch<UserMeResponse>("/auth/me");
 }
 
-/** Logout — Limpia el token del cliente */
+/** Logout — Las llaves se pierden al limpiar el estado de React (no hay nada que limpiar en disco) */
 export function logout() {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("crypto_unlocked");
+    // Las llaves criptográficas viven solo en memoria, no hace falta limpiar nada aquí.
+    // El JWT de la cookie se limpia desde el componente con document.cookie.
 }
 
 // ─────────────────────────────────────────────
