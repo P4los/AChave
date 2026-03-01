@@ -50,36 +50,6 @@ def decode_access_token(token: str) -> UUID:
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido o manipulado.")
 
-def create_verification_token(user_id: UUID) -> str:
-    """
-    Genera un JWT de un solo uso para verificar el email.
-    Expira en 24 horas.
-    """
-    expire = datetime.now(timezone.utc) + timedelta(hours=24)
-    payload = {
-        "sub": str(user_id),
-        "exp": expire,
-        "type": "email_verification"
-    }
-    return jwt.encode(payload, config.jwt_secret_key, algorithm=config.jwt_algorithm)
-
-def decode_verification_token(token: str) -> UUID:
-    """Decodifica el token de verificación y devuelve el user_id."""
-    try:
-        payload = jwt.decode(token, config.jwt_secret_key, algorithms=[config.jwt_algorithm])
-
-        if payload.get("type") != "email_verification":
-            raise HTTPException(status_code=400, detail="Este token no es de verificación.")
-
-        user_id_str = payload.get("sub")
-        if user_id_str is None:
-            raise HTTPException(status_code=400, detail="Token de verificación inválido.")
-        return UUID(user_id_str)
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=400, detail="El enlace de verificación ha expirado (24h). Solicita uno nuevo.")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=400, detail="Enlace de verificación inválido o manipulado.")
-
 def get_current_user_id(
     credentials: HTTPAuthorizationCredentials = Depends(security_scheme)
 ) -> UUID:

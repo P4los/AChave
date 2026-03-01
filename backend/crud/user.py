@@ -17,30 +17,24 @@ def get_user_by_id(db: Session, user_id: UUID) -> User | None:
 
 def create_user(db: Session, user_in: UserCreate) -> User:
     """
-    Fase 1: Solo guarda el email. Sin password, sin cofre.
+    Self-Hosted: Crea usuario completo en un solo paso.
+    - Marcado como verificado automáticamente
+    - Master Password hasheada con bcrypt
+    - Paquete criptográfico ZK guardado
+    - Cofre por defecto creado
     """
     db_user = User(
         email=user_in.email,
-        is_verified=False
+        is_verified=True,  # Self-hosted: sin verificación de email
+        hashed_password=get_password_hash(user_in.password),
+        validador_cifrado=user_in.validador_cifrado,
+        llave_publica=user_in.llave_publica,
+        llave_privada_cifrada=user_in.llave_privada_cifrada,
     )
     db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
+    db.flush()  # Para obtener el user_id antes del commit
 
-def verify_user(db: Session, user_id: UUID) -> User | None:
-    """
-    Fase 2: Marca is_verified=True y crea el cofre por defecto.
-    """
-    db_user = get_user_by_id(db, user_id)
-    if not db_user:
-        return None
-
-    if db_user.is_verified:
-        return db_user
-
-    db_user.is_verified = True
-
+    # Crear cofre por defecto
     default_vault = Vault(
         name="Cofre Principal",
         description="Cofre por defecto. No se puede eliminar.",
@@ -54,17 +48,14 @@ def verify_user(db: Session, user_id: UUID) -> User | None:
 
 def setup_crypto(db: Session, user_id: UUID, crypto_in: CryptoSetup) -> User | None:
     """
-    Fase 3: Hashea la Master Password para login futuro
-    y guarda el paquete criptográfico Zero-Knowledge como TEXT opaco.
+    Actualiza el paquete criptográfico de un usuario existente.
+    Mantenido por compatibilidad.
     """
     db_user = get_user_by_id(db, user_id)
     if not db_user:
         return None
 
-    # Hashear la Master Password con bcrypt para autenticación futura
     db_user.hashed_password = get_password_hash(crypto_in.password)
-
-    # Guardar paquete criptográfico (el backend NUNCA descifra esto)
     db_user.validador_cifrado = crypto_in.validador_cifrado
     db_user.llave_publica = crypto_in.llave_publica
     db_user.llave_privada_cifrada = crypto_in.llave_privada_cifrada

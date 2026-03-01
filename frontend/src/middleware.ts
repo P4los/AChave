@@ -2,11 +2,11 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 // Rutas que no requieren estar logueado
-const publicRoutes = ['/login', '/registro', '/verify', '/recuperar']
+const publicRoutes = ['/login', '/registro']
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  
+
   // Si estamos en una ruta pública, permitimos el paso libre
   if (publicRoutes.includes(pathname)) {
     return NextResponse.next()

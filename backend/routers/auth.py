@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -8,31 +8,30 @@ from schemas.user import (
 )
 from crud.user import (
     create_user, get_user_by_email, get_user_by_id,
-    verify_user, setup_crypto
+    setup_crypto
 )
 from utils.security import (
     verify_password, create_access_token,
-    create_verification_token, decode_verification_token,
     get_current_user_id
 )
-from utils.email import send_verification_email
 
 router = APIRouter(
     prefix="/auth",
     tags=["Autenticación"],
 )
 
-# ─── FASE 1: Registro (solo email) ───
+# ─── REGISTRO (Self-Hosted: sin verificación de email) ───
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=LoginResponse, status_code=status.HTTP_201_CREATED)
 async def register_user(
     user_in: UserCreate,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     """
-    Fase 1: Recibe SOLO el email.
-    Crea usuario con is_verified=False y envía email de verificación.
+    Self-Hosted: Registro completo en un solo paso.
+    Recibe email + Master Password + paquete criptográfico.
+    Crea el usuario ya verificado, con su cofre por defecto y llaves configuradas.
+    Devuelve JWT para acceso inmediato.
     """
     db_user = get_user_by_email(db, email=user_in.email)
     if db_user:
@@ -41,38 +40,19 @@ async def register_user(
             detail="Este email ya está registrado en AChave."
         )
 
+    # Crear usuario ya verificado + cofre por defecto + crypto setup
     new_user = create_user(db=db, user_in=user_in)
 
-    verification_token = create_verification_token(new_user.user_id)
-    background_tasks.add_task(send_verification_email, new_user.email, verification_token)
+    # Generar JWT de sesión
+    token = create_access_token(user_id=new_user.user_id)
+    new_user.access_token = token
+    new_user.token_type = "Bearer"
+    db.commit()
+    db.refresh(new_user)
 
     return new_user
 
-# ─── FASE 2: Verificación email ───
-
-@router.get("/verify/{token}")
-def verify_email(token: str, db: Session = Depends(get_db)):
-    """
-    Fase 2: El usuario hace clic en el enlace.
-    Marca is_verified=True y crea el cofre por defecto.
-    """
-    user_id = decode_verification_token(token)
-
-    db_user = verify_user(db, user_id)
-    if not db_user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
-
-    # Generar un JWT temporal para que pueda llamar a /setup-crypto
-    token = create_access_token(user_id=db_user.user_id)
-
-    return {
-        "message": "Email verificado. Ahora configura tu Master Password.",
-        "is_verified": True,
-        "user_id": str(db_user.user_id),
-        "access_token": token
-    }
-
-# ─── FASE 3: Master Password + Paquete Cripto ───
+# ─── SETUP CRYPTO (re-cifrado con JWT real) ───
 
 @router.post("/setup-crypto", response_model=UserMeResponse)
 def setup_user_crypto(
@@ -81,19 +61,13 @@ def setup_user_crypto(
     user_id = Depends(get_current_user_id)
 ):
     """
-    Fase 3: Recibe la Master Password + paquete criptográfico.
-    - Hashea la Master Password con bcrypt (para login futuro).
-    - Guarda validador_cifrado, llave_publica, llave_privada_cifrada como TEXT opaco.
-    Requiere el JWT que se entregó en la verificación.
+    Actualiza el paquete criptográfico del usuario.
+    Usado tras el registro para re-cifrar con el salt del JWT real.
     """
     db_user = get_user_by_id(db, user_id)
 
     if not db_user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
-    if not db_user.is_verified:
-        raise HTTPException(status_code=403, detail="Debes verificar tu email primero.")
-    if db_user.hashed_password is not None:
-        raise HTTPException(status_code=400, detail="La Master Password ya fue configurada.")
 
     updated_user = setup_crypto(db=db, user_id=user_id, crypto_in=crypto_in)
     return updated_user
@@ -121,9 +95,6 @@ def login_user(user_credentials: UserLogin, db: Session = Depends(get_db)):
             detail="Credenciales incorrectas.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-
-    if not db_user.is_verified:
-        raise HTTPException(status_code=403, detail="Debes verificar tu email primero.")
 
     token = create_access_token(user_id=db_user.user_id)
     db_user.access_token = token

@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 // ─────────────────────────────────────────────
 // Tipos de datos que devuelve el backend
@@ -72,29 +72,24 @@ async function apiFetch<T>(
 // Funciones de autenticación
 // ─────────────────────────────────────────────
 
-/** Fase 1: Registro con email + password_login */
-export async function register(email: string, password: string): Promise<UserResponse> {
-    return apiFetch<UserResponse>("/auth/register", {
-        method: "POST",
-        body: JSON.stringify({ email, password }),
-    });
-}
-
-/** Fase 2: Verificación del email via token */
-export async function verifyEmail(token: string): Promise<{ message: string; is_verified: boolean; user_id: string }> {
-    return apiFetch("/auth/verify/" + token);
-}
-
-/** Fase 3: Guardar paquete criptográfico Zero-Knowledge */
-export async function setupCrypto(data: {
+/** Registro Self-Hosted: email + password + paquete criptográfico completo */
+export async function register(data: {
+    email: string;
+    password: string;
     validador_cifrado: string;
     llave_publica: string;
     llave_privada_cifrada: string;
-}): Promise<UserMeResponse> {
-    return apiFetch<UserMeResponse>("/auth/setup-crypto", {
+}): Promise<LoginResponse> {
+    const result = await apiFetch<LoginResponse>("/auth/register", {
         method: "POST",
         body: JSON.stringify(data),
     });
+
+    if (result.access_token) {
+        localStorage.setItem("access_token", result.access_token);
+    }
+
+    return result;
 }
 
 /** Login: email + password_login → JWT + paquete cripto */

@@ -4,23 +4,23 @@ from datetime import datetime
 from uuid import UUID
 
 # ─────────────────────────────────────────────
-# FASE 1: Registro (solo email)
+# REGISTRO (Self-Hosted: email + password + crypto en un paso)
 # ─────────────────────────────────────────────
 
 class UserCreate(BaseModel):
-    """Fase 1: Solo el email. Sin password."""
+    """Self-Hosted: Email + Master Password + paquete criptográfico completo."""
     email: EmailStr
+    password: str = Field(min_length=8, description="Master Password para login y cifrado")
+    validador_cifrado: str = Field(description="AES(Master Password, 'SESAMO_ABIERTO')")
+    llave_publica: str = Field(description="Llave pública en texto plano")
+    llave_privada_cifrada: str = Field(description="Llave privada cifrada con la Master Password")
 
 # ─────────────────────────────────────────────
-# FASE 3: Setup Master Password + Cripto
+# SETUP CRYPTO (mantenido por compatibilidad interna)
 # ─────────────────────────────────────────────
 
 class CryptoSetup(BaseModel):
-    """
-    Fase 3 (post-verificación): El usuario define su Master Password
-    y el frontend envía su paquete criptográfico.
-    La Master Password se hashea para login futuro.
-    """
+    """Paquete criptográfico Zero-Knowledge."""
     password: str = Field(min_length=8, description="Master Password para login y cifrado")
     validador_cifrado: str = Field(description="AES(Master Password, 'SESAMO_ABIERTO')")
     llave_publica: str = Field(description="Llave pública en texto plano")
@@ -40,7 +40,7 @@ class UserLogin(BaseModel):
 # ─────────────────────────────────────────────
 
 class UserResponse(BaseModel):
-    """Respuesta tras registro (solo email, sin datos sensibles)."""
+    """Respuesta tras registro."""
     user_id: UUID
     email: EmailStr
     is_verified: bool
@@ -49,7 +49,7 @@ class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class LoginResponse(BaseModel):
-    """Respuesta tras login: JWT + paquete criptográfico."""
+    """Respuesta tras login o registro: JWT + paquete criptográfico."""
     user_id: UUID
     email: EmailStr
     is_verified: bool

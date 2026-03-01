@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { 
-  X, Lock, Shield, KeyRound, Briefcase, Building, 
-  Laptop, ShoppingCart, Wallet, CreditCard, Gamepad2, 
-  Music, Film, Plane, Car, Globe, Heart, HelpCircle, 
-  Star, Smartphone, Code, Coffee, Camera, Folder, Gift, Loader2 
+import {
+  X, Lock, Shield, KeyRound, Briefcase, Building,
+  Laptop, ShoppingCart, Wallet, CreditCard, Gamepad2,
+  Music, Film, Plane, Car, Globe, Heart, HelpCircle,
+  Star, Smartphone, Code, Coffee, Camera, Folder, Gift, Loader2
 } from "lucide-react";
 import { useCrypto } from "@/context/CryptoContext";
 import { toast } from "react-hot-toast";
+import { API_BASE } from "@/lib/api";
 
 export const VAULT_ICONS = [
   { name: "lock", icon: Lock },
@@ -77,7 +78,7 @@ export function CreateVaultModal({ onClose }: CreateVaultModalProps) {
         color: selectedColor
       };
 
-      const res = await fetch("http://127.0.0.1:8000/vaults/", {
+      const res = await fetch(`${API_BASE}/vaults/`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -91,13 +92,13 @@ export function CreateVaultModal({ onClose }: CreateVaultModalProps) {
       }
 
       const newVault = await res.json();
-      
+
       // Update the global state
       await fetchVaults();
-      
+
       // Auto-select the newly created vault
       setSelectedVault(newVault);
-      
+
       toast.success("Cofre creado con éxito");
       onClose();
     } catch (error) {
@@ -111,10 +112,10 @@ export function CreateVaultModal({ onClose }: CreateVaultModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
       <div className="bg-white rounded-[28px] p-6 md:p-10 w-full max-w-[540px] flex flex-col gap-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-        
+
         <div className="flex items-center justify-between">
           <h2 className="text-[22px] font-extrabold text-slate-900">Crear Cofre Nuevo</h2>
-          <button 
+          <button
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors"
           >
@@ -125,8 +126,8 @@ export function CreateVaultModal({ onClose }: CreateVaultModalProps) {
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-2">
             <label className="text-[15px] font-semibold text-slate-900">Nombre del Cofre</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Ej. Trabajo, Compras Online..."
@@ -144,12 +145,11 @@ export function CreateVaultModal({ onClose }: CreateVaultModalProps) {
                   <button
                     key={item.name}
                     onClick={() => setSelectedIcon(item.name)}
-                    className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all ${
-                      isSelected 
-                        ? 'text-white shadow-md' 
+                    className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all ${isSelected
+                        ? 'text-white shadow-md'
                         : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                    }`}
-                    style={isSelected ? { 
+                      }`}
+                    style={isSelected ? {
                       backgroundColor: selectedColor,
                       boxShadow: `0 4px 6px -1px ${selectedColor}40, 0 2px 4px -2px ${selectedColor}40`
                     } : undefined}
@@ -163,7 +163,7 @@ export function CreateVaultModal({ onClose }: CreateVaultModalProps) {
 
           <div className="flex flex-col gap-2">
             <label className="text-[15px] font-semibold text-slate-900">Descripción (opcional)</label>
-            <textarea 
+            <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Breve descripción del cofre..."
@@ -179,9 +179,8 @@ export function CreateVaultModal({ onClose }: CreateVaultModalProps) {
                 <button
                   key={color}
                   onClick={() => setSelectedColor(color)}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform ${
-                    selectedColor === color ? 'scale-110 ring-4 ring-slate-100' : 'hover:scale-105'
-                  }`}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform ${selectedColor === color ? 'scale-110 ring-4 ring-slate-100' : 'hover:scale-105'
+                    }`}
                   style={{ backgroundColor: color }}
                 />
               ))}
@@ -190,19 +189,18 @@ export function CreateVaultModal({ onClose }: CreateVaultModalProps) {
         </div>
 
         <div className="flex flex-col md:flex-row gap-3 md:gap-4 mt-2">
-          <button 
+          <button
             onClick={onClose}
             disabled={loading}
             className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3.5 px-4 rounded-[14px] transition-colors"
           >
             Cancelar
           </button>
-          <button 
+          <button
             onClick={handleCreateVault}
             disabled={loading || !name.trim()}
-            className={`flex-1 font-bold py-3.5 px-4 rounded-[14px] transition-colors flex items-center justify-center gap-2 ${
-              loading || !name.trim() ? "bg-green-600/50 text-white cursor-not-allowed" : "bg-green-600 hover:bg-green-700 text-white"
-            }`}
+            className={`flex-1 font-bold py-3.5 px-4 rounded-[14px] transition-colors flex items-center justify-center gap-2 ${loading || !name.trim() ? "bg-green-600/50 text-white cursor-not-allowed" : "bg-green-600 hover:bg-green-700 text-white"
+              }`}
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Crear Cofre"}
             {!loading && <Lock className="w-4 h-4 ml-1" />}

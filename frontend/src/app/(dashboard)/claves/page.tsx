@@ -7,27 +7,28 @@ import { usePasswordGenerator } from "@/hooks/usePasswordGenerator";
 import { usePwnedPassword } from "@/hooks/usePwnedPassword";
 import { usePwnedPasswordBatch } from "@/hooks/usePwnedPasswordBatch";
 import { toast } from "react-hot-toast";
+import { API_BASE } from "@/lib/api";
 
 // Funciones criptográficas (RSA para passwords)
 const encryptFormPassword = async (plainPassword: string, pubKeyPem: string) => {
-    const forge = await import('node-forge');
-    const publicKey = forge.pki.publicKeyFromPem(pubKeyPem);
-    const encrypted = publicKey.encrypt(plainPassword, 'RSA-OAEP');
-    return forge.util.encode64(encrypted);
+  const forge = await import('node-forge');
+  const publicKey = forge.pki.publicKeyFromPem(pubKeyPem);
+  const encrypted = publicKey.encrypt(plainPassword, 'RSA-OAEP');
+  return forge.util.encode64(encrypted);
 };
 
 const decryptVaultPassword = async (encryptedB64: string, privKeyPem: string) => {
-    const forge = await import('node-forge');
-    const privateKey = forge.pki.privateKeyFromPem(privKeyPem);
-    const decoded = forge.util.decode64(encryptedB64);
-    const decrypted = privateKey.decrypt(decoded, 'RSA-OAEP');
-    return decrypted;
+  const forge = await import('node-forge');
+  const privateKey = forge.pki.privateKeyFromPem(privKeyPem);
+  const decoded = forge.util.decode64(encryptedB64);
+  const decrypted = privateKey.decrypt(decoded, 'RSA-OAEP');
+  return decrypted;
 };
 
 
 
 export default function MisClavesPage() {
-  const { keys, setKeys, isUnlocked, selectedVault } = useCrypto(); 
+  const { keys, setKeys, isUnlocked, selectedVault } = useCrypto();
 
   const [isMounted, setIsMounted] = useState(false);
   const [loadingContent, setLoadingContent] = useState(false);
@@ -80,8 +81,8 @@ export default function MisClavesPage() {
     setLoadingContent(true);
     try {
       const token = getAuthToken();
-      const pRes = await fetch(`http://127.0.0.1:8000/passwords/vault/${selectedVault.vault_id}`, { 
-        headers: {"Authorization": `Bearer ${token}`}
+      const pRes = await fetch(`${API_BASE}/passwords/vault/${selectedVault.vault_id}`, {
+        headers: { "Authorization": `Bearer ${token}` }
       });
       const pData = await pRes.json();
       const items = Array.isArray(pData) ? pData : [];
@@ -97,13 +98,13 @@ export default function MisClavesPage() {
           try {
             const plain = await decryptVaultPassword(item.password, keys.priv);
             plainsForChecking.push({ id: item.passwords_id, plainText: plain });
-          } catch(e) { /* skip */ }
+          } catch (e) { /* skip */ }
         }
-        
+
         // Llamar al batch checker solo con los descifrados exitosos
         if (plainsForChecking.length > 0) {
           checkBatchVulnerabilities(plainsForChecking).then(vulns => {
-             setVulnerabilities(vulns);
+            setVulnerabilities(vulns);
           });
         }
       }
@@ -133,7 +134,7 @@ export default function MisClavesPage() {
       };
 
       const token = getAuthToken();
-      await fetch("http://127.0.0.1:8000/passwords/", {
+      await fetch(`${API_BASE}/passwords/`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -190,7 +191,7 @@ export default function MisClavesPage() {
         <div className="flex items-center gap-3">
           <h1 className="text-[26px] md:text-[32px] font-extrabold text-slate-900">Mis Claves</h1>
         </div>
-        <button 
+        <button
           onClick={() => setShowModal(true)}
           className="bg-slate-900 hover:bg-slate-800 text-white flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all"
         >
@@ -220,7 +221,7 @@ export default function MisClavesPage() {
             >
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-[10px] bg-slate-50 border border-slate-200 flex items-center justify-center p-1.5 overflow-hidden shrink-0">
-                  <span className="font-extrabold text-slate-400 capitalize">{item.web.substring(0,2)}</span>
+                  <span className="font-extrabold text-slate-400 capitalize">{item.web.substring(0, 2)}</span>
                 </div>
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">
@@ -241,14 +242,14 @@ export default function MisClavesPage() {
 
               <div className="flex items-center gap-3 mt-3 md:mt-0">
                 <div className="bg-slate-100 px-3 py-1.5 text-center rounded-lg flex-1 md:flex-none">
-                    <span className="text-[13px] font-mono font-bold text-slate-700 tracking-wider">
-                      {visiblePasswords[item.passwords_id] ? visiblePasswords[item.passwords_id] : "••••••••••••"}
-                    </span>
+                  <span className="text-[13px] font-mono font-bold text-slate-700 tracking-wider">
+                    {visiblePasswords[item.passwords_id] ? visiblePasswords[item.passwords_id] : "••••••••••••"}
+                  </span>
                 </div>
 
                 <div className="h-4 w-[1px] bg-slate-200 mx-2 hidden md:block"></div>
 
-                <button 
+                <button
                   onClick={async () => {
                     const passToCopy = visiblePasswords[item.passwords_id];
                     if (passToCopy) {
@@ -267,11 +268,11 @@ export default function MisClavesPage() {
                 >
                   <Copy className="h-5 w-5" />
                 </button>
-                <button 
+                <button
                   onClick={() => togglePasswordVisibility(item.passwords_id, item.password)}
                   className="text-slate-400 hover:text-slate-900 transition-colors p-1.5"
                 >
-                  {visiblePasswords[item.passwords_id] ? <EyeOff className="h-5 w-5 text-red-500"/> : <Eye className="h-5 w-5" />}
+                  {visiblePasswords[item.passwords_id] ? <EyeOff className="h-5 w-5 text-red-500" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
             </div>
@@ -290,26 +291,26 @@ export default function MisClavesPage() {
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-[24px] font-extrabold text-slate-900">Nueva Clave</h3>
               <button onClick={() => setShowModal(false)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 transition-colors">
-                <X className="w-5 h-5"/>
+                <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <form onSubmit={handleAddSubmit} className="flex flex-col gap-6">
               <div className="flex flex-col gap-2">
                 <label className="text-[14px] font-bold text-slate-900">Sitio Web / Título</label>
-                <input required type="text" value={newWeb} onChange={e=>setNewWeb(e.target.value)} placeholder="Ej. Netflix, Figma, GitHub..." className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-[15px] rounded-[14px] px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all placeholder:text-slate-400 font-medium" />
+                <input required type="text" value={newWeb} onChange={e => setNewWeb(e.target.value)} placeholder="Ej. Netflix, Figma, GitHub..." className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-[15px] rounded-[14px] px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all placeholder:text-slate-400 font-medium" />
               </div>
-              
+
               <div className="flex flex-col gap-2">
                 <label className="text-[14px] font-bold text-slate-900">URL o Enlace</label>
-                <input type="text" value={newUrl} onChange={e=>setNewUrl(e.target.value)} placeholder="https://ejemplo.com" className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-[15px] rounded-[14px] px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all placeholder:text-slate-400 font-medium" />
+                <input type="text" value={newUrl} onChange={e => setNewUrl(e.target.value)} placeholder="https://ejemplo.com" className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-[15px] rounded-[14px] px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all placeholder:text-slate-400 font-medium" />
               </div>
-              
+
               <div className="flex flex-col gap-2">
                 <label className="text-[14px] font-bold text-slate-900">Usuario / Email</label>
-                <input required type="text" value={newEmail} onChange={e=>setNewEmail(e.target.value)} placeholder="yo@gmail.com o miguelg_dev" className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-[15px] rounded-[14px] px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all placeholder:text-slate-400 font-medium" />
+                <input required type="text" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="yo@gmail.com o miguelg_dev" className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-[15px] rounded-[14px] px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all placeholder:text-slate-400 font-medium" />
               </div>
-              
+
               <div className="flex flex-col gap-2">
                 <div className="flex justify-between items-end">
                   <label className="text-[14px] font-bold text-slate-900">Contraseña secreta</label>
@@ -317,17 +318,17 @@ export default function MisClavesPage() {
                     <Shuffle className="w-3 h-3" /> Generar
                   </button>
                 </div>
-                
+
                 <div className="relative w-full">
-                  <input 
-                    required 
-                    type={showNewPassword ? "text" : "password"} 
-                    value={newPass} 
-                    onChange={e=>setNewPass(e.target.value)} 
-                    placeholder="Tu contraseña secreta" 
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-[15px] rounded-[14px] pl-4 pr-12 py-3.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all placeholder:text-slate-400 font-medium font-mono" 
+                  <input
+                    required
+                    type={showNewPassword ? "text" : "password"}
+                    value={newPass}
+                    onChange={e => setNewPass(e.target.value)}
+                    placeholder="Tu contraseña secreta"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-[15px] rounded-[14px] pl-4 pr-12 py-3.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all placeholder:text-slate-400 font-medium font-mono"
                   />
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setShowNewPassword(!showNewPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
@@ -345,7 +346,7 @@ export default function MisClavesPage() {
                   </p>
                 ) : isVulnerable === false && newPass.length >= 8 ? (
                   <p className="text-[11px] text-green-600 font-bold mt-1 flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3"/> Contraseña segura y robusta.
+                    <ShieldCheck className="w-3 h-3" /> Contraseña segura y robusta.
                   </p>
                 ) : newPass.length > 0 && newPass.length < 8 ? (
                   <p className="text-[11px] text-orange-600 font-bold mt-1 flex items-center gap-1">
@@ -356,25 +357,24 @@ export default function MisClavesPage() {
 
               <div className="flex flex-col gap-2">
                 <label className="text-[14px] font-bold text-slate-900">Notas (Opcional)</label>
-                <textarea 
+                <textarea
                   value={newNotes}
-                  onChange={e=>setNewNotes(e.target.value)}
+                  onChange={e => setNewNotes(e.target.value)}
                   placeholder="PIN, código de recuperación..."
                   rows={2}
                   className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-[15px] rounded-[14px] px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-all placeholder:text-slate-400 font-medium resize-none"
                 />
               </div>
-              
+
               <div className="pt-2 border-t border-slate-100 flex justify-end gap-3 mt-2">
                 <button type="button" onClick={() => setShowModal(false)} className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-900 font-bold py-3.5 px-6 rounded-[14px] transition-colors flex items-center justify-center">
                   Cancelar
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={isCheckingVuln || isVulnerable === true || newPass.length < 8}
-                  className={`font-bold py-3.5 px-6 rounded-[14px] transition-colors flex items-center justify-center gap-2 ${
-                    isCheckingVuln || isVulnerable === true || newPass.length < 8 ? "bg-green-600/50 text-white cursor-not-allowed" : "bg-green-600 hover:bg-green-700 text-white"
-                  }`}
+                  className={`font-bold py-3.5 px-6 rounded-[14px] transition-colors flex items-center justify-center gap-2 ${isCheckingVuln || isVulnerable === true || newPass.length < 8 ? "bg-green-600/50 text-white cursor-not-allowed" : "bg-green-600 hover:bg-green-700 text-white"
+                    }`}
                 >
                   Guardar Clave <Save className="hidden md:block w-4 h-4" />
                 </button>

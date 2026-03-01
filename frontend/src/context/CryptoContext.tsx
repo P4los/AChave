@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { API_BASE } from "@/lib/api";
 
 interface CryptoKeys {
   pub: string;
@@ -21,7 +22,7 @@ interface CryptoContextProps {
   setKeys: (keys: CryptoKeys | null) => void;
   isUnlocked: boolean;
   logoutKeys: () => void;
-  
+
   vaults: Vault[];
   selectedVault: Vault | null;
   setSelectedVault: (vault: Vault | null) => void;
@@ -55,7 +56,7 @@ export const CryptoProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem("achave_keys");
     }
   }, [keys]);
-  
+
   const [vaults, setVaults] = useState<Vault[]>([]);
   const [selectedVault, setSelectedVault] = useState<Vault | null>(null);
 
@@ -69,7 +70,7 @@ export const CryptoProvider = ({ children }: { children: ReactNode }) => {
     try {
       const token = getAuthToken();
       if (!token) return;
-      const res = await fetch("http://127.0.0.1:8000/vaults/", {
+      const res = await fetch(`${API_BASE}/vaults/`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) {
@@ -106,7 +107,7 @@ export const CryptoProvider = ({ children }: { children: ReactNode }) => {
     try {
       const token = getAuthToken();
       if (!token) return false;
-      const res = await fetch(`http://127.0.0.1:8000/vaults/${id}`, {
+      const res = await fetch(`${API_BASE}/vaults/${id}`, {
         method: 'DELETE',
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -135,9 +136,9 @@ export const CryptoProvider = ({ children }: { children: ReactNode }) => {
   const isUnlocked = keys !== null;
 
   return (
-    <CryptoContext.Provider value={{ 
-      keys, setKeys, isUnlocked, logoutKeys, 
-      vaults, selectedVault, setSelectedVault, fetchVaults, deleteVault 
+    <CryptoContext.Provider value={{
+      keys, setKeys, isUnlocked, logoutKeys,
+      vaults, selectedVault, setSelectedVault, fetchVaults, deleteVault
     }}>
       {children}
     </CryptoContext.Provider>
