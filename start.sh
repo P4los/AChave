@@ -19,7 +19,7 @@ echo ""
 
 # ── Verificar que Docker está instalado ──
 if ! command -v docker &> /dev/null; then
-    echo -e "${RED}✗ Docker no está instalado. Instálalo desde https://docs.docker.com/get-docker/${NC}"
+    echo -e "${RED}[X] Docker no está instalado. Instálalo desde https://docs.docker.com/get-docker/${NC}"
     exit 1
 fi
 
