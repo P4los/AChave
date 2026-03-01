@@ -1,9 +1,39 @@
 /* Chrome Extension Popup — Global Styles */
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+:root {
+  --ext-bg-app: #f1f5f9;
+  --ext-bg-surface: #ffffff;
+  --ext-bg-soft: #f8fafc;
+  --ext-bg-soft-2: #f1f5f9;
+  --ext-bg-contrast: #0f172a;
+  --ext-text-primary: #0f172a;
+  --ext-text-secondary: #64748b;
+  --ext-text-muted: #94a3b8;
+  --ext-border: #e2e8f0;
+  --ext-border-soft: #f1f5f9;
+  --ext-overlay: rgba(15, 23, 42, 0.4);
+}
+
+.dark {
+  --ext-bg-app: #020617;
+  --ext-bg-surface: #111827;
+  --ext-bg-soft: #0f172a;
+  --ext-bg-soft-2: #1e293b;
+  --ext-bg-contrast: #0b1220;
+  --ext-text-primary: #f8fafc;
+  --ext-text-secondary: #cbd5e1;
+  --ext-text-muted: #94a3b8;
+  --ext-border: #334155;
+  --ext-border-soft: #1e293b;
+  --ext-overlay: rgba(2, 6, 23, 0.6);
 }
 
 html {
@@ -14,13 +44,19 @@ html {
   min-height: 580px;
   max-height: 580px;
   overflow: hidden;
-  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family:
+    "Inter",
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
   font-size: 16px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #F1F5F9;
-  color: #0F172A;
+  background-color: var(--ext-bg-app);
+  color: var(--ext-text-primary);
 }
 
 body {
@@ -43,11 +79,20 @@ body {
 }
 
 /* Thin scrollbar */
-#root::-webkit-scrollbar { width: 3px; }
-#root::-webkit-scrollbar-track { background: transparent; }
-#root::-webkit-scrollbar-thumb { background-color: rgba(148,163,184,0.4); border-radius: 20px; }
+#root::-webkit-scrollbar {
+  width: 3px;
+}
+#root::-webkit-scrollbar-track {
+  background: transparent;
+}
+#root::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.4);
+  border-radius: 20px;
+}
 
 /* Animation for spinners */
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }

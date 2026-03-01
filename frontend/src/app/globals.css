@@ -1,31 +1,97 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: var(--font-inter);
 
-  --color-slate-50: #F8FAFC;
-  --color-slate-100: #F1F5F9;
-  --color-slate-200: #E2E8F0;
-  --color-slate-300: #CBD5E1;
-  --color-slate-400: #94A3B8;
-  --color-slate-500: #64748B;
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
   --color-slate-600: #475569;
   --color-slate-700: #334155;
-  --color-slate-800: #1E293B;
-  --color-slate-900: #0F172A;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
 
-  --color-green-500: #22C55E;
-  --color-green-600: #16A34A;
-  --color-green-700: #15803D;
+  --color-green-500: #22c55e;
+  --color-green-600: #16a34a;
+  --color-green-700: #15803d;
 
-  --color-red-50: #FEF2F2;
-  --color-red-500: #EF4444;
-  --color-red-600: #DC2626;
-  --color-red-800: #991B1B;
+  --color-red-50: #fef2f2;
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+  --color-red-800: #991b1b;
 }
 
 body {
   background-color: var(--color-slate-100);
   color: var(--color-slate-900);
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
+.dark body {
+  background-color: #020617;
+  color: #f8fafc;
+}
+
+.dark .bg-white {
+  background-color: #111827;
+}
+
+.dark .bg-slate-50 {
+  background-color: #0f172a;
+}
+
+.dark .bg-slate-100 {
+  background-color: #1e293b;
+}
+
+.dark .text-slate-900 {
+  color: #f8fafc;
+}
+
+.dark .text-slate-700 {
+  color: #cbd5e1;
+}
+
+.dark .text-slate-600,
+.dark .text-slate-500 {
+  color: #94a3b8;
+}
+
+.dark .text-slate-400 {
+  color: #64748b;
+}
+
+.dark .border-slate-200 {
+  border-color: #334155;
+}
+
+.dark .border-slate-100 {
+  border-color: #1e293b;
+}
+
+.dark .hover\:bg-slate-50:hover {
+  background-color: #1e293b;
+}
+
+.dark .hover\:bg-slate-100:hover {
+  background-color: #334155;
+}
+
+.dark .bg-red-50 {
+  background-color: rgba(153, 27, 27, 0.25);
+}
+
+.dark .border-red-200 {
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+.dark .text-red-600 {
+  color: #f87171;
+}

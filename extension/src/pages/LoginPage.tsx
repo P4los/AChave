@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { ShieldCheck, Lock, TriangleAlert, Eye, EyeOff, Loader2, KeyRound } from "lucide-react";
+import {
+  ShieldCheck,
+  Lock,
+  TriangleAlert,
+  Eye,
+  EyeOff,
+  Loader2,
+  KeyRound,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCrypto } from "@/context/CryptoContext";
 import { loginApi, getMe, setAuthToken, register } from "@/lib/api";
@@ -11,15 +19,36 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
-const derivationAndValidation = async (masterKey: string, encryptedValidator: string, encryptedPrivateKey: string, token: string) => {
-  const forge = await import('node-forge');
-  const saltBytes = new TextEncoder().encode(token.substring(0, 16)); 
-  const importedMasterKey = await window.crypto.subtle.importKey("raw", new TextEncoder().encode(masterKey), { name: "PBKDF2" }, false, ["deriveBits", "deriveKey"]);
-  const aesKey = await window.crypto.subtle.deriveKey({ name: "PBKDF2", salt: saltBytes, iterations: 100000, hash: "SHA-256" }, importedMasterKey, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
+const derivationAndValidation = async (
+  masterKey: string,
+  encryptedValidator: string,
+  encryptedPrivateKey: string,
+  token: string,
+) => {
+  const forge = await import("node-forge");
+  const saltBytes = new TextEncoder().encode(token.substring(0, 16));
+  const importedMasterKey = await window.crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(masterKey),
+    { name: "PBKDF2" },
+    false,
+    ["deriveBits", "deriveKey"],
+  );
+  const aesKey = await window.crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: saltBytes, iterations: 100000, hash: "SHA-256" },
+    importedMasterKey,
+    { name: "AES-GCM", length: 256 },
+    true,
+    ["encrypt", "decrypt"],
+  );
 
   const decryptAES = async (b64: string) => {
     const payload = base64ToUint8Array(b64);
-    const decrypted = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv: payload.slice(0, 12) }, aesKey, payload.slice(12));
+    const decrypted = await window.crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: payload.slice(0, 12) },
+      aesKey,
+      payload.slice(12),
+    );
     return new TextDecoder().decode(decrypted);
   };
 
@@ -52,7 +81,12 @@ export default function LoginPage() {
         await setAuthToken(data.access_token);
         const meData = await getMe(data.access_token);
         if (meData.validador_cifrado && meData.llave_privada_cifrada) {
-          const privateKey = await derivationAndValidation(masterKey, meData.validador_cifrado, meData.llave_privada_cifrada, data.access_token);
+          const privateKey = await derivationAndValidation(
+            masterKey,
+            meData.validador_cifrado,
+            meData.llave_privada_cifrada,
+            data.access_token,
+          );
           await setKeys({ pub: meData.llave_publica!, priv: privateKey });
           await fetchVaults();
         }
@@ -61,161 +95,373 @@ export default function LoginPage() {
       } else {
         await register(email, masterKey);
         setSuccessMsg("¡Cuenta creada! Revisa tu email.");
-        setEmail(""); setMasterKey("");
+        setEmail("");
+        setMasterKey("");
       }
     } catch (err: any) {
-      setError(err.message === "Operación fallida." ? "Master Password incorrecta" : err.message);
+      setError(
+        err.message === "Operación fallida."
+          ? "Master Password incorrecta"
+          : err.message,
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ width: 390, minHeight: 580, display: 'flex', flexDirection: 'column', background: '#0F172A' }}>
+    <div
+      style={{
+        width: 390,
+        minHeight: 580,
+        display: "flex",
+        flexDirection: "column",
+        background: "var(--ext-bg-contrast)",
+      }}
+    >
       {/* Compact header */}
-      <div style={{ padding: '24px 20px 20px', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <ShieldCheck style={{ width: 20, height: 20, color: 'white' }} />
+      <div
+        style={{
+          padding: "24px 20px 20px",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            marginBottom: 16,
+          }}
+        >
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              background: "#22C55E",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <ShieldCheck style={{ width: 20, height: 20, color: "white" }} />
           </div>
-          <span style={{ fontSize: 20, fontWeight: 800, color: 'white', fontFamily: 'Inter, sans-serif' }}>AChave</span>
+          <span
+            style={{
+              fontSize: 20,
+              fontWeight: 800,
+              color: "white",
+              fontFamily: "Inter, sans-serif",
+            }}
+          >
+            AChave
+          </span>
         </div>
-        <p style={{ fontSize: 13, fontWeight: 600, color: '#94A3B8', fontFamily: 'Inter, sans-serif', margin: 0 }}>
+        <p
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: "var(--ext-text-muted)",
+            fontFamily: "Inter, sans-serif",
+            margin: 0,
+          }}
+        >
           Gestor de contraseñas con cifrado Zero-Knowledge
         </p>
       </div>
 
       {/* Form panel */}
-      <div style={{
-        flex: 1, background: 'white', borderRadius: '20px 20px 0 0',
-        padding: '24px 20px 20px', display: 'flex', flexDirection: 'column', gap: 20,
-        fontFamily: 'Inter, sans-serif'
-      }}>
+      <div
+        style={{
+          flex: 1,
+          background: "var(--ext-bg-surface)",
+          borderRadius: "20px 20px 0 0",
+          padding: "24px 20px 20px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 20,
+          fontFamily: "Inter, sans-serif",
+        }}
+      >
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0F172A', margin: '0 0 4px' }}>
+          <h2
+            style={{
+              fontSize: 20,
+              fontWeight: 800,
+              color: "var(--ext-text-primary)",
+              margin: "0 0 4px",
+            }}
+          >
             {isLogin ? "Iniciar sesión" : "Crear cuenta"}
           </h2>
-          <p style={{ fontSize: 13, fontWeight: 500, color: '#64748B', margin: 0 }}>
-            {isLogin ? "Accede a tu cofre seguro." : "Regístrate gratis para empezar."}
+          <p
+            style={{
+              fontSize: 13,
+              fontWeight: 500,
+              color: "var(--ext-text-secondary)",
+              margin: 0,
+            }}
+          >
+            {isLogin
+              ? "Accede a tu cofre seguro."
+              : "Regístrate gratis para empezar."}
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>Correo Electrónico</label>
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 14,
+            width: "100%",
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <label
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: "var(--ext-text-primary)",
+              }}
+            >
+              Correo Electrónico
+            </label>
             <input
-              type="email" required value={email}
+              type="email"
+              required
+              value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="tu@email.com"
               style={{
-                width: '100%', background: '#F8FAFC', border: '1.5px solid #E2E8F0',
-                color: '#0F172A', fontSize: 14, borderRadius: 12,
-                padding: '10px 14px', outline: 'none', fontFamily: 'Inter, sans-serif',
-                fontWeight: 500, boxSizing: 'border-box',
+                width: "100%",
+                background: "var(--ext-bg-soft)",
+                border: "1.5px solid var(--ext-border)",
+                color: "var(--ext-text-primary)",
+                fontSize: 14,
+                borderRadius: 12,
+                padding: "10px 14px",
+                outline: "none",
+                fontFamily: "Inter, sans-serif",
+                fontWeight: 500,
+                boxSizing: "border-box",
               }}
             />
           </div>
 
           {isLogin && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>Master Password</label>
-              <div style={{ position: 'relative', width: '100%' }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "var(--ext-text-primary)",
+                }}
+              >
+                Master Password
+              </label>
+              <div style={{ position: "relative", width: "100%" }}>
                 <input
                   type={showPassword ? "text" : "password"}
-                  required={isLogin} value={masterKey}
+                  required={isLogin}
+                  value={masterKey}
                   onChange={(e) => setMasterKey(e.target.value)}
                   placeholder="Tu contraseña secreta"
                   style={{
-                    width: '100%', background: '#F8FAFC', border: '1.5px solid #E2E8F0',
-                    color: '#0F172A', fontSize: 14, borderRadius: 12,
-                    padding: '10px 40px 10px 14px', outline: 'none', fontFamily: 'Inter, sans-serif',
-                    fontWeight: 500, boxSizing: 'border-box',
+                    width: "100%",
+                    background: "var(--ext-bg-soft)",
+                    border: "1.5px solid var(--ext-border)",
+                    color: "var(--ext-text-primary)",
+                    fontSize: 14,
+                    borderRadius: 12,
+                    padding: "10px 40px 10px 14px",
+                    outline: "none",
+                    fontFamily: "Inter, sans-serif",
+                    fontWeight: 500,
+                    boxSizing: "border-box",
                   }}
                 />
                 <button
-                  type="button" onClick={() => setShowPassword(!showPassword)}
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
                   style={{
-                    position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                    background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: '#94A3B8',
+                    position: "absolute",
+                    right: 10,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 2,
+                    color: "var(--ext-text-muted)",
                   }}
                 >
-                  {showPassword ? <EyeOff style={{ width: 18, height: 18 }} /> : <Eye style={{ width: 18, height: 18 }} />}
+                  {showPassword ? (
+                    <EyeOff style={{ width: 18, height: 18 }} />
+                  ) : (
+                    <Eye style={{ width: 18, height: 18 }} />
+                  )}
                 </button>
               </div>
             </div>
           )}
 
           <button
-            type="submit" disabled={loading}
+            type="submit"
+            disabled={loading}
             style={{
-              marginTop: 4, width: '100%', color: 'white', fontWeight: 700,
-              padding: '12px 20px', borderRadius: 12, border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
-              fontSize: 14, fontFamily: 'Inter, sans-serif',
-              background: loading ? 'rgba(22, 163, 74, 0.5)' : '#16A34A',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              boxSizing: 'border-box',
+              marginTop: 4,
+              width: "100%",
+              color: "white",
+              fontWeight: 700,
+              padding: "12px 20px",
+              borderRadius: 12,
+              border: "none",
+              cursor: loading ? "not-allowed" : "pointer",
+              fontSize: 14,
+              fontFamily: "Inter, sans-serif",
+              background: loading ? "rgba(22, 163, 74, 0.5)" : "#16A34A",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              boxSizing: "border-box",
             }}
           >
-            {loading && <Loader2 style={{ width: 16, height: 16, animation: 'spin 1s linear infinite' }} />}
-            {loading ? "Cargando..." : (isLogin ? "Desbloquear cofre" : "Crear mi cofre seguro")}
+            {loading && (
+              <Loader2
+                style={{
+                  width: 16,
+                  height: 16,
+                  animation: "spin 1s linear infinite",
+                }}
+              />
+            )}
+            {loading
+              ? "Cargando..."
+              : isLogin
+                ? "Desbloquear cofre"
+                : "Crear mi cofre seguro"}
           </button>
 
           {error && (
-            <div style={{
-              padding: 10, background: '#FEF2F2', color: '#DC2626', borderRadius: 10,
-              fontSize: 12, fontWeight: 600, border: '1px solid #FEE2E2',
-              display: 'flex', alignItems: 'flex-start', gap: 6
-            }}>
-              <TriangleAlert style={{ width: 14, height: 14, flexShrink: 0, marginTop: 1 }} />
+            <div
+              style={{
+                padding: 10,
+                background: "#FEF2F2",
+                color: "#DC2626",
+                borderRadius: 10,
+                fontSize: 12,
+                fontWeight: 600,
+                border: "1px solid #FEE2E2",
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 6,
+              }}
+            >
+              <TriangleAlert
+                style={{ width: 14, height: 14, flexShrink: 0, marginTop: 1 }}
+              />
               <span>{error}</span>
             </div>
           )}
 
           {successMsg && (
-            <div style={{
-              padding: 10, background: '#F0FDF4', color: '#15803D', borderRadius: 10,
-              fontSize: 12, fontWeight: 600, border: '1px solid #DCFCE7',
-              display: 'flex', alignItems: 'flex-start', gap: 6
-            }}>
-              <ShieldCheck style={{ width: 14, height: 14, flexShrink: 0, marginTop: 1 }} />
+            <div
+              style={{
+                padding: 10,
+                background: "#F0FDF4",
+                color: "#15803D",
+                borderRadius: 10,
+                fontSize: 12,
+                fontWeight: 600,
+                border: "1px solid #DCFCE7",
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 6,
+              }}
+            >
+              <ShieldCheck
+                style={{ width: 14, height: 14, flexShrink: 0, marginTop: 1 }}
+              />
               <span>{successMsg}</span>
             </div>
           )}
         </form>
 
         {/* Features mini */}
-        <div style={{
-          display: 'flex', gap: 8, padding: '12px 0', borderTop: '1px solid #F1F5F9',
-        }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            padding: "12px 0",
+            borderTop: "1px solid var(--ext-border-soft)",
+          }}
+        >
           {[
-            { icon: Lock, label: 'Zero Knowledge', color: '#22C55E' },
-            { icon: ShieldCheck, label: 'Cifrado E2E', color: '#3B82F6' },
-            { icon: KeyRound, label: 'RSA-OAEP', color: '#8B5CF6' },
-          ].map(f => (
-            <div key={f.label} style={{
-              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-              padding: '8px 4px', borderRadius: 10, background: '#F8FAFC',
-            }}>
+            { icon: Lock, label: "Zero Knowledge", color: "#22C55E" },
+            { icon: ShieldCheck, label: "Cifrado E2E", color: "#3B82F6" },
+            { icon: KeyRound, label: "RSA-OAEP", color: "#8B5CF6" },
+          ].map((f) => (
+            <div
+              key={f.label}
+              style={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 4,
+                padding: "8px 4px",
+                borderRadius: 10,
+                background: "var(--ext-bg-soft)",
+              }}
+            >
               <f.icon style={{ width: 14, height: 14, color: f.color }} />
-              <span style={{ fontSize: 9, fontWeight: 700, color: '#475569', textAlign: 'center' }}>{f.label}</span>
+              <span
+                style={{
+                  fontSize: 9,
+                  fontWeight: 700,
+                  color: "var(--ext-text-secondary)",
+                  textAlign: "center",
+                }}
+              >
+                {f.label}
+              </span>
             </div>
           ))}
         </div>
 
         {/* Switch */}
-        <div style={{
-          display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4,
-          fontSize: 13, paddingTop: 4,
-        }}>
-          <span style={{ color: '#64748B', fontWeight: 500 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 4,
+            fontSize: 13,
+            paddingTop: 4,
+          }}
+        >
+          <span style={{ color: "var(--ext-text-secondary)", fontWeight: 500 }}>
             {isLogin ? "¿No tienes cuenta?" : "¿Ya tienes un cofre?"}
           </span>
           <button
-            onClick={() => { setIsLogin(!isLogin); setError(""); setSuccessMsg(""); }}
+            onClick={() => {
+              setIsLogin(!isLogin);
+              setError("");
+              setSuccessMsg("");
+            }}
             disabled={loading}
             style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              fontWeight: 700, color: '#16A34A', fontSize: 13, fontFamily: 'Inter, sans-serif',
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontWeight: 700,
+              color: "#16A34A",
+              fontSize: 13,
+              fontFamily: "Inter, sans-serif",
               padding: 0,
             }}
           >

@@ -8,16 +8,28 @@ export default function DashboardLayout() {
   const [showVaultModal, setShowVaultModal] = useState(false);
 
   return (
-    <div style={{
-      width: 390, minHeight: 580, display: 'flex', flexDirection: 'column',
-      background: '#F1F5F9', fontFamily: 'Inter, sans-serif', position: 'relative',
-    }}>
+    <div
+      style={{
+        width: 390,
+        minHeight: 580,
+        display: "flex",
+        flexDirection: "column",
+        background: "var(--ext-bg-app)",
+        color: "var(--ext-text-primary)",
+        fontFamily: "Inter, sans-serif",
+        position: "relative",
+      }}
+    >
       <ExtensionHeader onOpenVaultModal={() => setShowVaultModal(true)} />
-      
-      <main style={{
-        flex: 1, padding: '12px 14px 64px',
-        overflowY: 'auto', overflowX: 'hidden',
-      }}>
+
+      <main
+        style={{
+          flex: 1,
+          padding: "12px 14px 64px",
+          overflowY: "auto",
+          overflowX: "hidden",
+        }}
+      >
         <Outlet />
       </main>
 
