@@ -1,6 +1,18 @@
 import { storage } from './storage';
 
-const API_BASE = "http://127.0.0.1:8000";
+const DEFAULT_API_BASE = "http://127.0.0.1:8000";
+
+/** Obtiene la URL del backend guardada por el usuario (o el valor por defecto) */
+export async function getApiBase(): Promise<string> {
+    const saved = await storage.get("achave_api_url");
+    return saved || DEFAULT_API_BASE;
+}
+
+/** Guarda la URL del backend en el storage de la extensión */
+export async function setApiBase(url: string): Promise<void> {
+    const clean = url.replace(/\/$/, ''); // quitar barra final
+    await storage.set("achave_api_url", clean);
+}
 
 // ─────────────────────────────────────────────
 // Tipos de datos que devuelve el backend
@@ -56,6 +68,7 @@ async function apiFetch<T>(
     options: RequestInit = {}
 ): Promise<T> {
     const token = await getAuthToken();
+    const apiBase = await getApiBase();
 
     const headers: Record<string, string> = {
         "Content-Type": "application/json",
@@ -66,7 +79,7 @@ async function apiFetch<T>(
         headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const res = await fetch(`${API_BASE}${endpoint}`, {
+    const res = await fetch(`${apiBase}${endpoint}`, {
         ...options,
         headers,
     });
@@ -85,11 +98,19 @@ async function apiFetch<T>(
 // Funciones de autenticación
 // ─────────────────────────────────────────────
 
-export async function register(email: string, password: string): Promise<UserResponse> {
-    return apiFetch<UserResponse>("/auth/register", {
+export async function register(data: {
+    email: string;
+    password: string;
+    validador_cifrado: string;
+    llave_publica: string;
+    llave_privada_cifrada: string;
+}): Promise<LoginResponse> {
+    const result = await apiFetch<LoginResponse>("/auth/register", {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(data),
     });
+    if (result.access_token) await setAuthToken(result.access_token);
+    return result;
 }
 
 export async function loginApi(email: string, password: string): Promise<LoginResponse> {

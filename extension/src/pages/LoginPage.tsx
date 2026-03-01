@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ShieldCheck, Lock, TriangleAlert, Eye, EyeOff, Loader2, KeyRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCrypto } from "@/context/CryptoContext";
-import { loginApi, getMe, setAuthToken, register } from "@/lib/api";
+import { loginApi, getMe, setAuthToken, register, getApiBase, setApiBase } from "@/lib/api";
 
 function base64ToUint8Array(base64: string): Uint8Array {
   const binary = atob(base64);
@@ -13,7 +13,7 @@ function base64ToUint8Array(base64: string): Uint8Array {
 
 const derivationAndValidation = async (masterKey: string, encryptedValidator: string, encryptedPrivateKey: string, token: string) => {
   const forge = await import('node-forge');
-  const saltBytes = new TextEncoder().encode(token.substring(0, 16)); 
+  const saltBytes = new TextEncoder().encode(token.substring(0, 16));
   const importedMasterKey = await window.crypto.subtle.importKey("raw", new TextEncoder().encode(masterKey), { name: "PBKDF2" }, false, ["deriveBits", "deriveKey"]);
   const aesKey = await window.crypto.subtle.deriveKey({ name: "PBKDF2", salt: saltBytes, iterations: 100000, hash: "SHA-256" }, importedMasterKey, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
 
@@ -26,6 +26,32 @@ const derivationAndValidation = async (masterKey: string, encryptedValidator: st
   const validador = await decryptAES(encryptedValidator);
   if (validador !== "SESAMO_ABIERTO") throw new Error("Operación fallida.");
   return await decryptAES(encryptedPrivateKey);
+};
+
+const generateCryptoPackage = async (masterKey: string, salt: string) => {
+  const forge = await import('node-forge');
+  const rsaKeypair = forge.pki.rsa.generateKeyPair({ bits: 2048, e: 0x10001 });
+  const publicKeyPem = forge.pki.publicKeyToPem(rsaKeypair.publicKey);
+  const privateKeyPem = forge.pki.privateKeyToPem(rsaKeypair.privateKey);
+
+  const saltBytes = new TextEncoder().encode(salt.substring(0, 16));
+  const importedMasterKey = await window.crypto.subtle.importKey("raw", new TextEncoder().encode(masterKey), { name: "PBKDF2" }, false, ["deriveBits", "deriveKey"]);
+  const aesKey = await window.crypto.subtle.deriveKey({ name: "PBKDF2", salt: saltBytes, iterations: 100000, hash: "SHA-256" }, importedMasterKey, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
+
+  const encryptAES = async (plain: string): Promise<string> => {
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const enc = await window.crypto.subtle.encrypt({ name: "AES-GCM", iv }, aesKey, new TextEncoder().encode(plain));
+    const combined = new Uint8Array(iv.length + enc.byteLength);
+    combined.set(iv, 0); combined.set(new Uint8Array(enc), iv.length);
+    return btoa(String.fromCharCode(...combined));
+  };
+
+  return {
+    publicKeyPem, privateKeyPem,
+    validador_cifrado: await encryptAES("SESAMO_ABIERTO"),
+    llave_publica: publicKeyPem,
+    llave_privada_cifrada: await encryptAES(privateKeyPem),
+  };
 };
 
 export default function LoginPage() {
@@ -59,9 +85,43 @@ export default function LoginPage() {
         setSuccessMsg("¡Sesión iniciada!");
         setTimeout(() => navigate("/claves"), 800);
       } else {
-        await register(email, masterKey);
-        setSuccessMsg("¡Cuenta creada! Revisa tu email.");
-        setEmail(""); setMasterKey("");
+        // ── REGISTRO Self-Hosted (un solo paso) ──
+        if (masterKey.length < 8) throw new Error("La Master Password debe tener al menos 8 caracteres.");
+
+        // 1. Salt temporal para primer cifrado
+        const tempSalt = Array.from(window.crypto.getRandomValues(new Uint8Array(16)))
+          .map(b => String.fromCharCode(65 + (b % 26))).join('');
+        const tempCrypto = await generateCryptoPackage(masterKey, tempSalt);
+
+        // 2. Registro completo en un paso
+        const data = await register({
+          email, password: masterKey,
+          validador_cifrado: tempCrypto.validador_cifrado,
+          llave_publica: tempCrypto.llave_publica,
+          llave_privada_cifrada: tempCrypto.llave_privada_cifrada,
+        });
+
+        // 3. Re-cifrar con el JWT real como salt
+        const realCrypto = await generateCryptoPackage(masterKey, data.access_token);
+
+        // 4. Actualizar el paquete criptográfico en el servidor
+        const apiBase = await getApiBase();
+        await fetch(`${apiBase}/auth/setup-crypto`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${data.access_token}` },
+          body: JSON.stringify({
+            password: masterKey,
+            validador_cifrado: realCrypto.validador_cifrado,
+            llave_publica: realCrypto.llave_publica,
+            llave_privada_cifrada: realCrypto.llave_privada_cifrada,
+          })
+        });
+
+        // 5. Guardar llaves en memoria y navegar
+        await setKeys({ pub: realCrypto.publicKeyPem, priv: realCrypto.privateKeyPem });
+        await fetchVaults();
+        setSuccessMsg("¡Cuenta creada! Entrando a tu cofre...");
+        setTimeout(() => navigate("/claves"), 800);
       }
     } catch (err: any) {
       setError(err.message === "Operación fallida." ? "Master Password incorrecta" : err.message);
@@ -96,7 +156,7 @@ export default function LoginPage() {
             {isLogin ? "Iniciar sesión" : "Crear cuenta"}
           </h2>
           <p style={{ fontSize: 13, fontWeight: 500, color: '#64748B', margin: 0 }}>
-            {isLogin ? "Accede a tu cofre seguro." : "Regístrate gratis para empezar."}
+            {isLogin ? "Accede a tu cofre seguro." : "Elige email y Master Password."}
           </p>
         </div>
 
@@ -116,34 +176,38 @@ export default function LoginPage() {
             />
           </div>
 
-          {isLogin && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>Master Password</label>
-              <div style={{ position: 'relative', width: '100%' }}>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  required={isLogin} value={masterKey}
-                  onChange={(e) => setMasterKey(e.target.value)}
-                  placeholder="Tu contraseña secreta"
-                  style={{
-                    width: '100%', background: '#F8FAFC', border: '1.5px solid #E2E8F0',
-                    color: '#0F172A', fontSize: 14, borderRadius: 12,
-                    padding: '10px 40px 10px 14px', outline: 'none', fontFamily: 'Inter, sans-serif',
-                    fontWeight: 500, boxSizing: 'border-box',
-                  }}
-                />
-                <button
-                  type="button" onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                    background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: '#94A3B8',
-                  }}
-                >
-                  {showPassword ? <EyeOff style={{ width: 18, height: 18 }} /> : <Eye style={{ width: 18, height: 18 }} />}
-                </button>
-              </div>
+          {/* Password — siempre visible (login y registro) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>Master Password</label>
+            <div style={{ position: 'relative', width: '100%' }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                required value={masterKey}
+                onChange={(e) => setMasterKey(e.target.value)}
+                placeholder={isLogin ? "Tu contraseña secreta" : "Mín. 8 caracteres"}
+                style={{
+                  width: '100%', background: '#F8FAFC', border: '1.5px solid #E2E8F0',
+                  color: '#0F172A', fontSize: 14, borderRadius: 12,
+                  padding: '10px 40px 10px 14px', outline: 'none', fontFamily: 'Inter, sans-serif',
+                  fontWeight: 500, boxSizing: 'border-box',
+                }}
+              />
+              <button
+                type="button" onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: '#94A3B8',
+                }}
+              >
+                {showPassword ? <EyeOff style={{ width: 18, height: 18 }} /> : <Eye style={{ width: 18, height: 18 }} />}
+              </button>
             </div>
-          )}
+            {!isLogin && (
+              <span style={{ fontSize: 10, color: '#EF4444', fontWeight: 600 }}>
+                No la olvides — no podemos recuperarla.
+              </span>
+            )}
+          </div>
 
           <button
             type="submit" disabled={loading}

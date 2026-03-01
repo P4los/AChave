@@ -29,11 +29,11 @@ if docker compose version &> /dev/null 2>&1; then
 elif command -v docker-compose &> /dev/null; then
     COMPOSE_CMD="docker-compose"
 else
-    echo -e "${RED}✗ Docker Compose no está instalado.${NC}"
+    echo -e "${RED}[X] Docker Compose no está instalado.${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}✓ Docker detectado${NC}"
+echo -e "${GREEN}[+] Docker detectado${NC}"
 
 # ── Crear .env del backend si no existe ──
 if [ ! -f "$SCRIPT_DIR/backend/.env" ]; then
@@ -42,9 +42,9 @@ if [ ! -f "$SCRIPT_DIR/backend/.env" ]; then
     # Generar un JWT_SECRET_KEY aleatorio seguro
     SECRET=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 64 | head -n 1)
     sed -i "s/cambia_esta_clave_por_una_segura_en_produccion/$SECRET/" "$SCRIPT_DIR/backend/.env"
-    echo -e "${GREEN}✓ backend/.env creado con clave JWT aleatoria${NC}"
+    echo -e "${GREEN}[+] backend/.env creado con clave JWT aleatoria${NC}"
 else
-    echo -e "${GREEN}✓ backend/.env encontrado${NC}"
+    echo -e "${GREEN}[+] backend/.env encontrado${NC}"
 fi
 
 # ── Crear .env.local del frontend si no existe ──
@@ -53,9 +53,9 @@ if [ ! -f "$SCRIPT_DIR/frontend/.env.local" ]; then
     cat > "$SCRIPT_DIR/frontend/.env.local" << 'EOF'
 NEXT_PUBLIC_API_URL=http://localhost:8000
 EOF
-    echo -e "${GREEN}✓ frontend/.env.local creado${NC}"
+    echo -e "${GREEN}[+] frontend/.env.local creado${NC}"
 else
-    echo -e "${GREEN}✓ frontend/.env.local encontrado${NC}"
+    echo -e "${GREEN}[+] frontend/.env.local encontrado${NC}"
 fi
 
 echo ""
@@ -87,7 +87,7 @@ case "$ACTION" in
         echo -e "${BOLD}[-] Deteniendo todos los servicios...${NC}"
         cd "$SCRIPT_DIR"
         $COMPOSE_CMD down
-        echo -e "${GREEN}✓ Servicios detenidos${NC}"
+        echo -e "${GREEN}[+] Servicios detenidos${NC}"
         ;;
 
     restart)
@@ -95,7 +95,7 @@ case "$ACTION" in
         cd "$SCRIPT_DIR"
         $COMPOSE_CMD down
         $COMPOSE_CMD up --build -d
-        echo -e "${GREEN}✓ Servicios reiniciados${NC}"
+        echo -e "${GREEN}[+] Servicios reiniciados${NC}"
         ;;
 
     logs)
@@ -109,7 +109,7 @@ case "$ACTION" in
         if [ "$CONFIRM" = "si" ]; then
             cd "$SCRIPT_DIR"
             $COMPOSE_CMD exec backend python reset_db.py --force
-            echo -e "${GREEN}✓ Base de datos reseteada${NC}"
+            echo -e "${GREEN}[+] Base de datos reseteada${NC}"
         else
             echo "Operación cancelada."
         fi
